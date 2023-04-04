@@ -56,8 +56,7 @@ class ToTensor(object):
 # Log the value
 class Log(object):
     def __call__(self, data):
-        data += 1e-7 # prevent 0 count
-        return torch.log10(data).float()
+        return torch.clip(torch.log10(data), min=0.).float()
     
 # Normalize
 class Normalize(object):

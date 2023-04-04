@@ -136,3 +136,4 @@ Pipfile.lock
 .vscode/
 *.pt
 sentiment_analysis.ipynb
+data/
