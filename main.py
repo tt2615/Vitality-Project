@@ -1,7 +1,7 @@
 import warnings
 warnings.filterwarnings('ignore')
 
-from dataset import PostData, ToTensor
+from dataset import PostData, ToTensor, Log
 from models import LR
 
 import torch
@@ -21,7 +21,7 @@ parser.add_argument('--device', choices=['cuda', 'mps', 'cpu'], default='cpu', h
 parser.add_argument('--model_path', type=str, default=None, help="trained model path", required=False)
 parser.add_argument('--batch', type=int, default=64, help="batch size for feeding data", required=False)
 parser.add_argument('--lr', type=float, default=1e-3, help="learning rate for training model", required=False)
-parser.add_argument('--optim', choices=['SGD', 'ADA'], default="SGD", help="optimizer for training model", required=False)
+parser.add_argument('--optim', choices=['SGD', 'Adam'], default="Adam", help="optimizer for training model", required=False)
 parser.add_argument('--epoch', type=int, default=100, help="epoch number for training model", required=False)
 args = parser.parse_args()
 
@@ -42,10 +42,12 @@ print(f"Computing device: {device}")
 
 #2. Load data
 x_trans_list = [ToTensor()]
-y_trasn_list = [ToTensor()]
+y_trasn_list = [ToTensor(), Log()]
 data = PostData(onehot_cols=['sentiment'], tar_cols=['Item_Views', 'Item_Likes', 'Item_Comments'], \
                 x_transforms=x_trans_list, y_transforms=y_trasn_list)
 train_data, valid_data, test_data = random_split(data, [0.8,0.0,0.2]) #train:test = 8:2
+# print(train_data[10])
+# exit()
 train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=len(test_data), shuffle=True)
 print(f"Data loaded. Training data: {len(train_data)}; Testing data: {len(test_data)}")
@@ -67,7 +69,10 @@ def exit_handler():
 atexit.register(exit_handler)
 
 #4. Select optimizer
-optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+if args.optim=='SGD':
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+else: # default adam
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 ### Test Mode
 if args.model_path:
@@ -120,6 +125,7 @@ else:
             optimizer.zero_grad()
             batch_loss.backward()
             optimizer.step()
+            torch.nn.utils.clip_grad_norm(parameters=model.parameters(), max_norm=10, norm_type=2.0)
 
             # early stop
 
@@ -132,7 +138,7 @@ else:
         logging.debug(f"metrics performance: {metrics}\n")
         logging.debug('-'*10+'\n')
     
-    print("="*10 + "END PROGRAM" + "=*10")
+    print("="*10 + "END PROGRAM" + "="*10)
     
     
     

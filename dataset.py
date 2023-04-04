@@ -28,7 +28,9 @@ class PostData(Dataset):
 
     def __getitem__(self, idx):
         record = self.data.iloc[idx]
-        x = record[[x for x in self.data.columns if x not in self.tar_cols]] # post inputs
+        x = record[[x for x in self.data.columns if x not in self.tar_cols]] 
+        # ['sentence_length', 'word_length', 'word_!', 'word_:', 'word_?', 'score', 'sentiment_negative', 'sentiment_neutral', 'sentiment_positive']
+        # print([x for x in self.data.columns if x not in self.tar_cols])
         y = record[self.tar_cols] # view, like, comment
 
         if self.x_trans_list:
@@ -45,14 +47,20 @@ class PostData(Dataset):
     
 # Data transforms
 
-# It converts a numpy array to a torch tensor
+# Converts a numpy array to a torch tensor
 class ToTensor(object):
     def __call__(self, data):
         return torch.tensor(data).float()
     
 
-# "Log the value"
+# Log the value
 class Log(object):
     def __call__(self, data):
+        data += 1e-7 # prevent 0 count
         return torch.log10(data).float()
+    
+# Normalize
+class Normalize(object):
+    def __call__(self, data):
+        return 
 
