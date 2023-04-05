@@ -12,7 +12,6 @@ plotly = "*"
 matplotlib = "*"
 seaborn = "*"
 tqdm = "*"
-torch = "*"
 
 [dev-packages]
 
