@@ -126,9 +126,7 @@ else:
             pred = model(x)
             # print(x.shape,y.shape, pred.shape) [256, 9] [256, 3] [256, 3] 
             
-            print(batch_loss)
             batch_loss = model.compute_loss(pred, y)
-            print(batch_loss)
             epoch_loss += batch_loss
             
 
