@@ -95,19 +95,20 @@ if args.model_path:
 else: 
     print("-"*10 + "Start training " + "-"*10)
 
-    t_epoch = trange(args.epoch, leave=False)
-    epoch_loss = 0
-
+    # paramters for early stop
     best_loss = -np.inf
     min_delta=0.001
     counter = 0
     patience = 10
     stop_training = False
 
+    t_epoch = trange(args.epoch, leave=False)
+    epoch_loss = 0
     for epoch in t_epoch:
         logging.debug(f"EPOCH {epoch}\n")
         t_epoch.set_description(f"Epoch {epoch} - avg loss: {epoch_loss/len(train_dataloader)}")
         t_epoch.refresh()
+        epoch_loss = 0 #reset epoch loss for current epoch training
         
         t_batch = tqdm(train_dataloader, leave=False)
         batch_loss = 0
@@ -125,8 +126,11 @@ else:
             pred = model(x)
             # print(x.shape,y.shape, pred.shape) [256, 9] [256, 3] [256, 3] 
             
+            print(batch_loss)
             batch_loss = model.compute_loss(pred, y)
+            print(batch_loss)
             epoch_loss += batch_loss
+            
 
             # backpropagation
             optimizer.zero_grad()
@@ -134,15 +138,13 @@ else:
             optimizer.step()
             # torch.nn.utils.clip_grad_norm(parameters=model.parameters(), max_norm=10, norm_type=2.0)
 
-            # early stop
-
             time.sleep(0.01)
 
         # eavluate on test data
         train_loss = epoch_loss/len(train_dataloader)
         valid_loss, metrics = model.eval(valid_dataloader, device)
         logging.debug(f"train loss: {train_loss}\n")
-        logging.debug(f"test loss: {valid_loss}\n")
+        logging.debug(f"valid loss: {valid_loss}\n")
         logging.debug(f"metrics performance: {metrics}\n")
         logging.debug('-'*10+'\n')
 

@@ -1,12 +1,7 @@
 import torch
-from torch.utils.data import DataLoader
 
 class R2_SCORE:
-
-    def __init__(self):
-        pass
-
-    def compute(self, y, y_pred):
+    def __call__(self, y, y_pred):
         # Compute the target mean for each task
         y_mean = torch.mean(y, dim=0) #[1, task]
 

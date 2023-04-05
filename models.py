@@ -19,13 +19,6 @@ class LR(nn.Module):
         self.evaluators = [R2_SCORE()]
 
     def forward(self, x):
-        """
-        > The function `forward` takes in an input `x` and returns a prediction `preds` based on the weights
-        `self.W` and bias `self.b`
-        
-        :param x: the input data
-        :return: The prediction of the model.
-        """
         out = self.linear(x)
         return out
     
@@ -50,6 +43,6 @@ class LR(nn.Module):
                 eval_loss = self.compute_loss(pred, y)
 
                 for e in self.evaluators:
-                    metrics_vals[type(e).__name__] += e.compute(y, pred) #[1, task]
+                    metrics_vals[type(e).__name__] += e(y, pred) #[1, task]
 
             return eval_loss, metrics_vals
