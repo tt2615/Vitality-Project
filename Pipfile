@@ -17,7 +17,6 @@ name = "downloadpytorch-664"
 pandas = "*"
 jupyterlab = "*"
 tqdm = "*"
-torch = "*"
 
 [dev-packages]
 
