@@ -29,7 +29,7 @@ class LR(nn.Module):
         loss = self.loss_fn(y_pred, y)
         return loss
     
-    def eval(self, eval_data:DataLoader, device) -> dict:
+    def eval(self, eval_data:DataLoader, device):
         with torch.no_grad():
             eval_loss = 0
             metrics_vals = {type(k).__name__:torch.zeros(3).to(device) for k in self.evaluators}
@@ -38,11 +38,11 @@ class LR(nn.Module):
                 x = x.to(device)
                 y = y.to(device)
                 pred = self.forward(x)
-                # print(pred, y)
+                print(x.shape, y.shape, pred.shape)
 
                 eval_loss = self.compute_loss(pred, y)
+                
                 n, p = x.shape[0], x.shape[1]
-
                 for e in self.evaluators:
                     metrics_vals[type(e).__name__] += e(y, pred, n, p) #[1, task]
 
