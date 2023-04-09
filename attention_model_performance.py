@@ -66,7 +66,7 @@ train_masks, validation_masks, _, _ = train_test_split(attention_masks, input_id
 
 # Define the training parameters
 batch_size = 32
-epochs = 1
+epochs = 10
 learning_rate = 2e-5
 
 # Define the optimizer and loss function

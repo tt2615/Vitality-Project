@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--model', choices=['LR', 'LR-Lasso'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', choices=['cuda', 'mps', 'cpu'], default='cpu', help="hardware to perform training", required=False)
+parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
 parser.add_argument('--model_path', type=str, default=None, help="trained model path", required=False)
 parser.add_argument('--batch', type=int, default=64, help="batch size for feeding data", required=False)
 parser.add_argument('--lr', type=float, default=1e-3, help="learning rate for training model", required=False)
@@ -54,10 +55,12 @@ print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_da
 
 
 #3. Select model
+if args.model_path:
+    model = LR(data.get_feature_num(), 3)
+    model.load_state_dict(torch.load(f"./models/{args.model_path}.pt"))
+    model.to(device)
 if args.model == 'LR':
     model = LR(data.get_feature_num(), 3).to(device)
-    # print(next(model.parameters()).device)
-    
 else: # default is LR
     model = LR(data.get_feature_num(), 3).to(device)
 print(f"Model loaded: {args.model}")
@@ -75,20 +78,18 @@ else: # default adam
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 ### Test Mode
-if args.model_path:
+if args.mode=="test":
     print("-"*10 + "Start evaluating " + "-"*10)
-
-    model = LR(data.get_feature_num(), 3)
-    model.load_state_dict(torch.load(f"./models/{args.model_path}.pt"))
-    model.to(device)
-
-    test_loss, metrics = model.eval(test_dataloader, device)
+    time_s = time.time()
+    
+    test_loss, metrics = model.eval(valid_dataloader, device)
 
     # print result
     print(f"AVG TEST LOSS: {test_loss}")
     for e, val in metrics.items():
         print(f"AVG SCORE for {e}: {val}")
     
+    print(f"evalution time {time.time()-time_s}s")
     print("="*10 + "END PROGRAM" + "="*10)
 
 ### Train Mode
@@ -154,7 +155,7 @@ else:
         else:
             counter += 1
             if counter >= patience:
-                print("Early stopping: validation loss did not improve for {} epochs".format(patience))
+                logging.debug("Early stopping: validation loss did not improve for {} epochs".format(patience))
                 stop_training = True
                 break
     

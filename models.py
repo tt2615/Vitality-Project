@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from evaluator import R2_SCORE
+from evaluator import R2_SCORE, ADJUST_R2
 
 # > The class `LR` defines a linear regression model with weights `self.W` and bias `self.b`
 class LR(nn.Module):
@@ -16,7 +16,7 @@ class LR(nn.Module):
         self.loss_fn = nn.MSELoss(reduction='mean')
 
         # define evaluator
-        self.evaluators = [R2_SCORE()]
+        self.evaluators = [R2_SCORE(), ADJUST_R2()]
 
     def forward(self, x):
         out = self.linear(x)
@@ -41,8 +41,9 @@ class LR(nn.Module):
                 # print(pred, y)
 
                 eval_loss = self.compute_loss(pred, y)
+                n, p = x.shape[0], x.shape[1]
 
                 for e in self.evaluators:
-                    metrics_vals[type(e).__name__] += e(y, pred) #[1, task]
+                    metrics_vals[type(e).__name__] += e(y, pred, n, p) #[1, task]
 
             return eval_loss, metrics_vals
