@@ -4,11 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pandas = "*"
 jupyterlab = "*"
 tqdm = "*"
 transformers = "*"
 scikit-learn = "*"
+numpy = "*"
 
 [dev-packages]
 

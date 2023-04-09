@@ -1,0 +1,151 @@
+Traceback (most recent call last):
+  File "./attention_model_performance.py", line 12, in <module>
+    import pandas as pd
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/__init__.py", line 22, in <module>
+    from pandas.compat import is_numpy_dev as _is_numpy_dev  # pyright: ignore # noqa:F401
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/compat/__init__.py", line 25, in <module>
+    from pandas.compat.numpy import (
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/compat/numpy/__init__.py", line 4, in <module>
+    from pandas.util.version import Version
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/util/__init__.py", line 8, in <module>
+    from pandas.core.util.hashing import (  # noqa:F401
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/core/util/hashing.py", line 24, in <module>
+    from pandas.core.dtypes.common import (
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/core/dtypes/common.py", line 26, in <module>
+    from pandas.core.dtypes.base import _registry as registry
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/core/dtypes/base.py", line 24, in <module>
+    from pandas.errors import AbstractMethodError
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/errors/__init__.py", line 6, in <module>
+    import ctypes
+  File "/usr/local/lib/python3.8/ctypes/__init__.py", line 7, in <module>
+    from _ctypes import Union, Structure, Array
+ModuleNotFoundError: No module named '_ctypes'
+Traceback (most recent call last):
+  File "./attention_model_performance.py", line 12, in <module>
+    import pandas as pd
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/__init__.py", line 22, in <module>
+    from pandas.compat import is_numpy_dev as _is_numpy_dev  # pyright: ignore # noqa:F401
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/compat/__init__.py", line 25, in <module>
+    from pandas.compat.numpy import (
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/compat/numpy/__init__.py", line 4, in <module>
+    from pandas.util.version import Version
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/util/__init__.py", line 8, in <module>
+    from pandas.core.util.hashing import (  # noqa:F401
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/core/util/hashing.py", line 24, in <module>
+    from pandas.core.dtypes.common import (
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/core/dtypes/common.py", line 26, in <module>
+    from pandas.core.dtypes.base import _registry as registry
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/core/dtypes/base.py", line 24, in <module>
+    from pandas.errors import AbstractMethodError
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.8/site-packages/pandas/errors/__init__.py", line 6, in <module>
+    import ctypes
+  File "/usr/local/lib/python3.8/ctypes/__init__.py", line 7, in <module>
+    from _ctypes import Union, Structure, Array
+ModuleNotFoundError: No module named '_ctypes'
+/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/cuda/__init__.py:107: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 10020). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at ../c10/cuda/CUDAFunctions.cpp:109.)
+  return torch._C._cuda_getDeviceCount() > 0
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertForSequenceClassification: ['cls.seq_relationship.bias', 'cls.seq_relationship.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.dense.weight', 'cls.predictions.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.decoder.weight']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-chinese and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils_base.py:2346: FutureWarning: The `pad_to_max_length` argument is deprecated and will be removed in a future version, use `padding=True` or `padding='longest'` to pad to the longest sequence in the batch, or use `padding='max_length'` to pad to a max length. In this case, you can give a specific length with `max_length` (e.g. `max_length=45`) or leave max_length to None to pad to the maximal input size of the model (e.g. 512 for Bert).
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/ziqing/MTL-project/./attention_model_performance.py", line 50, in <module>
+    encoded_dict = tokenizer.encode_plus(text,
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils_base.py", line 2709, in encode_plus
+    return self._encode_plus(
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils.py", line 649, in _encode_plus
+    first_ids = get_input_ids(text)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils.py", line 616, in get_input_ids
+    tokens = self.tokenize(text, **kwargs)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils.py", line 547, in tokenize
+    tokenized_text.extend(self._tokenize(token))
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/models/bert/tokenization_bert.py", line 244, in _tokenize
+    for token in self.basic_tokenizer.tokenize(text, never_split=self.all_special_tokens):
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/models/bert/tokenization_bert.py", line 420, in tokenize
+    orig_tokens = whitespace_tokenize(text)
+KeyboardInterrupt
+/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/cuda/__init__.py:107: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 10020). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at ../c10/cuda/CUDAFunctions.cpp:109.)
+  return torch._C._cuda_getDeviceCount() > 0
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertForSequenceClassification: ['cls.seq_relationship.weight', 'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight', 'cls.predictions.transform.LayerNorm.bias']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-chinese and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils_base.py:2346: FutureWarning: The `pad_to_max_length` argument is deprecated and will be removed in a future version, use `padding=True` or `padding='longest'` to pad to the longest sequence in the batch, or use `padding='max_length'` to pad to a max length. In this case, you can give a specific length with `max_length` (e.g. `max_length=45`) or leave max_length to None to pad to the maximal input size of the model (e.g. 512 for Bert).
+  warnings.warn(
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertForSequenceClassification: ['cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.dense.weight', 'cls.seq_relationship.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.seq_relationship.bias', 'cls.predictions.decoder.weight']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-chinese and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils_base.py:2346: FutureWarning: The `pad_to_max_length` argument is deprecated and will be removed in a future version, use `padding=True` or `padding='longest'` to pad to the longest sequence in the batch, or use `padding='max_length'` to pad to a max length. In this case, you can give a specific length with `max_length` (e.g. `max_length=45`) or leave max_length to None to pad to the maximal input size of the model (e.g. 512 for Bert).
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/ziqing/MTL-project/./attention_model_performance.py", line 114, in <module>
+    outputs = model(inputs, attention_mask=masks, labels=labels)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/models/bert/modeling_bert.py", line 1562, in forward
+    outputs = self.bert(
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/models/bert/modeling_bert.py", line 1013, in forward
+    embedding_output = self.embeddings(
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/models/bert/modeling_bert.py", line 230, in forward
+    inputs_embeds = self.word_embeddings(input_ids)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/nn/modules/sparse.py", line 158, in forward
+    return F.embedding(
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/torch/nn/functional.py", line 2199, in embedding
+    return torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu! (when checking argument for argument index in method wrapper__index_select)
+Traceback (most recent call last):
+  File "/home/ziqing/MTL-project/./attention_model_performance.py", line 28, in <module>
+    df = pd.read_csv('./data/news_data_with_sentiment.csv')
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 912, in read_csv
+    return _read(filepath_or_buffer, kwds)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 583, in _read
+    return parser.read(nrows)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 1704, in read
+    ) = self._engine.read(  # type: ignore[attr-defined]
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/parsers/c_parser_wrapper.py", line 234, in read
+    chunks = self._reader.read_low_memory(nrows)
+  File "pandas/_libs/parsers.pyx", line 812, in pandas._libs.parsers.TextReader.read_low_memory
+  File "pandas/_libs/parsers.pyx", line 889, in pandas._libs.parsers.TextReader._read_rows
+  File "pandas/_libs/parsers.pyx", line 1034, in pandas._libs.parsers.TextReader._convert_column_data
+  File "pandas/_libs/parsers.pyx", line 1088, in pandas._libs.parsers.TextReader._convert_tokens
+  File "pandas/_libs/parsers.pyx", line 1163, in pandas._libs.parsers.TextReader._convert_with_dtype
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/core/dtypes/common.py", line 1335, in is_extension_array_dtype
+    def is_extension_array_dtype(arr_or_dtype) -> bool:
+KeyboardInterrupt
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertForSequenceClassification: ['cls.predictions.transform.dense.weight', 'cls.predictions.decoder.weight', 'cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.seq_relationship.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.bias']
+- This IS expected if you are initializing BertForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at bert-base-chinese and are newly initialized: ['classifier.weight', 'classifier.bias']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Truncation was not explicitly activated but `max_length` is provided a specific value, please use `truncation=True` to explicitly truncate examples to max length. Defaulting to 'longest_first' truncation strategy. If you encode pairs of sequences (GLUE-style) with the tokenizer you can select this strategy more precisely by providing a specific strategy to `truncation`.
+/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/transformers/tokenization_utils_base.py:2346: FutureWarning: The `pad_to_max_length` argument is deprecated and will be removed in a future version, use `padding=True` or `padding='longest'` to pad to the longest sequence in the batch, or use `padding='max_length'` to pad to a max length. In this case, you can give a specific length with `max_length` (e.g. `max_length=45`) or leave max_length to None to pad to the maximal input size of the model (e.g. 512 for Bert).
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/ziqing/MTL-project/./attention_model_performance.py", line 149, in <module>
+    confusion_matrix.to_csv('./att_results/confusion matrix.csv', index=False)
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/core/generic.py", line 3772, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/formats/format.py", line 1186, in to_csv
+    csv_formatter.save()
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/formats/csvs.py", line 240, in save
+    with get_handle(
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/common.py", line 737, in get_handle
+    check_parent_directory(str(handle))
+  File "/home/ziqing/.local/share/virtualenvs/MTL-project-727bZgpr/lib/python3.9/site-packages/pandas/io/common.py", line 600, in check_parent_directory
+    raise OSError(rf"Cannot save file into a non-existent directory: '{parent}'")
+OSError: Cannot save file into a non-existent directory: 'att_results'

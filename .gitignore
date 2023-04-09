@@ -137,4 +137,3 @@ Pipfile.lock
 *.pt
 sentiment_analysis.ipynb
 data/
-attention_model_performance.py
