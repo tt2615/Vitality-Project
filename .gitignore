@@ -137,3 +137,5 @@ Pipfile.lock
 *.pt
 sentiment_analysis.ipynb
 data/
+nohup.out
+att_results/

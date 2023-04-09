@@ -23,7 +23,8 @@ from sklearn.metrics import accuracy_score, classification_report
 
 import logging
 LOG_PATH = (f"./logs/att_performance.log")
-logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(levelname)s - %(message)s')
+logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 
 df = pd.read_csv('./data/news_data_with_sentiment.csv')
 
@@ -95,7 +96,7 @@ for epoch in range(epochs):
 
         loss.backward()
         optimizer.step()
-        # logging.debug(i)
+        logging.debug(i)
     logging.debug(epoch)
 
     # Evaluate the model on the validation set
