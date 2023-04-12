@@ -15,7 +15,7 @@ import pandas as pd
 # from sklearn.decomposition import LatentDirichletAllocation
 
 import torch
-from transformers import BertTokenizer, BertForSequenceClassification, BertConfig
+from transformers import BertTokenizer, BertForSequenceClassification, AutoConfig
 # from transformers import AutoTokenizer, AutoModelForSequenceClassification
 # from transformers import Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
@@ -39,15 +39,10 @@ else:
     device = torch.device('cpu')
 logging.debug(f"Computing device: {device}")
 
-# add dropout
-configuration = BertConfig.from_pretrained('bert-base-chinese', num_labels=2, output_hidden_states=True, output_attentions=True)
-configuration.hidden_dropout_prob = 0.8
-configuration.attention_probs_dropout_prob = 0.8
-logging.debug(configuration)
-
 # Load the pre-trained tokenizer and model
 tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-model = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
+
+model = BertForSequenceClassification.from_pretrained('bert-base-chinese', num_labels=2, output_hidden_states=True, output_attentions=True)
 model.to(device)
 
 # Tokenize the input text and convert it to PyTorch tensors
@@ -71,9 +66,9 @@ train_inputs, validation_inputs, train_labels, validation_labels = train_test_sp
 train_masks, validation_masks, _, _ = train_test_split(attention_masks, input_ids, random_state=42, test_size=0.1)
 
 # Define the training parameters
-batch_size = 32
+batch_size = 256
 epochs = 10
-learning_rate = 1e-5
+learning_rate = 1e-6
 
 # Define the optimizer and loss function
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -150,7 +145,7 @@ for epoch in range(epochs):
     logging.debug(f'Epoch {epoch + 1}/{epochs}, Training Loss: {train_loss / len(train_labels):.4f}, Validation Loss: {eval_loss / len(validation_labels):.4f}, Validation Accuracy: {accuracy:.4f}')
 
     # logging.debug classification report and confusion matrix
-    logging.debug(f"\n{classification_report(true_labels, predictions)}")
+    logging.debug(f"\n{classification_report(true_labels, predictions)")
     confusion_matrix = pd.crosstab(pd.Series(true_labels), pd.Series(predictions), rownames=['True'], colnames=['Predicted'])
     logging.debug(f"\n{confusion_matrix}")
     confusion_matrix.to_csv('./att_results/confusion matrix.csv', index=False)
