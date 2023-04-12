@@ -4,19 +4,23 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pandas = "*"
 jupyterlab = "*"
+<<<<<<< HEAD
 sklearn = "*"
 pyldavis = "*"
 plotly = "*"
 matplotlib = "*"
 seaborn = "*"
+=======
+>>>>>>> 7db95fa7336e604a7ce02d3fe247221ed22afb38
 tqdm = "*"
+transformers = "*"
+scikit-learn = "*"
+numpy = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.9"
 
 [pipenv]
 allow_prereleases = true
