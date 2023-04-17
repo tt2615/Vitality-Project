@@ -26,7 +26,7 @@ LOG_PATH = (f"./logs/att_performance.log")
 logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
-df = pd.read_csv('./data/news_data_with_sentiment.csv')
+df = pd.read_csv('./data/news_data_with_y1030_sentiment.csv')
 
 # df=df[1:20000]
 
@@ -65,7 +65,7 @@ for text in df['Item_Title']:
 
 input_ids = torch.cat(input_ids, dim=0)
 attention_masks = torch.cat(attention_masks, dim=0)
-labels = torch.tensor(df['top1p_views'].values)
+labels = torch.tensor(df['top20p_views'].values)
 
 train_inputs, validation_inputs, train_labels, validation_labels = train_test_split(input_ids, labels, random_state=42, test_size=0.1)
 train_masks, validation_masks, _, _ = train_test_split(attention_masks, input_ids, random_state=42, test_size=0.1)
