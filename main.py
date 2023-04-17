@@ -1,5 +1,5 @@
 from dataset import PostData, ToTensor, Log
-from models import LR
+from models import LR, LLR
 
 import torch
 torch.manual_seed(666)
@@ -13,7 +13,7 @@ import numpy as np
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', choices=['LR', 'LR-Lasso'], help="MTL model", required=True)
+parser.add_argument('--model', choices=['LR', 'LLR'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', choices=['cuda', 'mps', 'cpu'], default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
@@ -61,6 +61,8 @@ if args.model_path:
     model.to(device)
 if args.model == 'LR':
     model = LR(data.get_feature_num(), 3).to(device)
+elif args.model == 'LLR':
+    model = LLR(data.get_feature_num(), 3).to(device)
 else: # default is LR
     model = LR(data.get_feature_num(), 3).to(device)
 print(f"Model loaded: {args.model}")
