@@ -55,8 +55,8 @@ class LLR(nn.Module):
         super(LLR, self).__init__()
 
         # define parameters
-        self.theta = torch.nn.Parameter(torch.randn(n_tasks))
-        self.gamma = torch.nn.Parameter(torch.randn(n_features, n_tasks))
+        self.theta = torch.nn.Parameter(torch.randn(n_features))
+        self.gamma = torch.nn.Parameter(torch.randn(n_tasks, n_features))
         self.bias = torch.nn.Parameter(torch.randn(n_tasks))
         self.lambda1 = torch.tensor(lambda1)
         self.lambda2 = torch.tensor(lambda2)
@@ -65,7 +65,9 @@ class LLR(nn.Module):
         self.evaluators = [R2_SCORE(), ADJUST_R2()]
 
     def forward(self, x):
-        out = torch.matmul(x, self.theta*self.gamma) + self.bias
+        # print(x.shape, self.theta.shape, self.gamma.shape)
+        weights = self.theta*self.gamma
+        out = torch.matmul(x, torch.transpose(weights,0,1)) + self.bias
         return out
     
     def compute_loss(self, y_pred, y):

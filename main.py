@@ -1,21 +1,22 @@
-from dataset import PostData, ToTensor, Log
+from dataset import PostData, ToTensor, Log, random_split
 from models import LR, LLR
 
 import torch
 torch.manual_seed(666)
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 import argparse
 import logging
 from tqdm import tqdm, trange
 import time
 import atexit
 import numpy as np
+import re
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', choices=['LR', 'LLR'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
-parser.add_argument('--device', choices=['cuda', 'mps', 'cpu'], default='cpu', help="hardware to perform training", required=False)
+parser.add_argument('--device', type=str, default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
 parser.add_argument('--model_path', type=str, default=None, help="trained model path", required=False)
 parser.add_argument('--batch', type=int, default=64, help="batch size for feeding data", required=False)
@@ -32,8 +33,8 @@ logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format
 print("="*20 + "START PROGRAM" + "="*20)
 
 #1. Check device
-if args.device == 'cuda' and torch.cuda.is_available():
-    device = torch.device('cuda')
+if re.compile('(cuda|cuda:\d+)').match(args.device) and torch.cuda.is_available():
+    device = torch.device(args.device)
 elif args.device == 'mps' and torch.backends.mps.is_available(): # type: ignore
     device = torch.device('mps')
 else:
