@@ -100,7 +100,7 @@ else:
     print("-"*10 + "Start training " + "-"*10)
 
     # paramters for early stop
-    best_loss = -np.inf
+    best_loss = np.inf
     min_delta=0.001
     counter = 0
     patience = 10
