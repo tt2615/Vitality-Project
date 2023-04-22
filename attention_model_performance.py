@@ -71,9 +71,6 @@ train_masks, validation_masks, _, _ = train_test_split(attention_masks, input_id
 batch_size = 16
 epochs = 10
 learning_rate = 1e-5
-
-# Define the optimizer and loss function
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 criterion = torch.nn.CrossEntropyLoss()
 
 # Train the model
@@ -83,6 +80,8 @@ if mode == 'trian':
     model = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
     model.to(device)
 
+    # Define the optimizer and loss function
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     logging.debug("Enter Traning")
     for epoch in range(epochs):
