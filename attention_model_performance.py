@@ -172,9 +172,11 @@ if mode == 'trian':
 
 
 elif mode == 'test':
-        
-    model = torch.load("./models/attention_model.pt")
+    logging.debug("enter testing mode")
+    param = torch.load("./models/attention_model.pt")
+    model.load_state_dict(param)
     model.to(device)
+    logging.debug(f"total batches: {len(validation_inputs)//batch_size}")
 
     # Evaluate the model on the validation set
     model.eval()
