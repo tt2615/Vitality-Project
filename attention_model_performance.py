@@ -46,6 +46,9 @@ configuration.hidden_dropout_prob = 0.8
 configuration.attention_probs_dropout_prob = 0.8
 logging.debug(configuration)
 
+model = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
+criterion = torch.nn.CrossEntropyLoss()
+
 # Tokenize the input text and convert it to PyTorch tensors
 tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
 input_ids = []
@@ -71,13 +74,11 @@ train_masks, validation_masks, _, _ = train_test_split(attention_masks, input_id
 batch_size = 16
 epochs = 10
 learning_rate = 1e-5
-criterion = torch.nn.CrossEntropyLoss()
 
 # Train the model
 if mode == 'trian':
 
     # Load the pre-trained tokenizer and model
-    model = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
     model.to(device)
 
     # Define the optimizer and loss function
