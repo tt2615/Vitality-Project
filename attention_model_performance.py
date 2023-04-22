@@ -176,7 +176,7 @@ elif mode == 'test':
     param = torch.load("./models/attention_model.pt")
     model.load_state_dict(param)
     model.to(device)
-    logging.debug(f"total batches: {len(validation_inputs)//batch_size}")
+    logging.debug(f"data size: {len(validation_inputs)}")
 
     # Evaluate the model on the validation set
     model.eval()
@@ -215,9 +215,18 @@ elif mode == 'test':
                 attn_weights = torch.softmax(output.attentions[-1][0], dim=-1)
                 attn_weights = attn_weights.squeeze()
                 attention_weight.append(attn_weights.cpu().numpy().tolist())
-            attention_weights.extend(attention_weight)
+            # attention_weights.extend(attention_weight)
+            attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy().tolist(),
+                                'label': true_labels,
+                                'prediction': predictions,
+                                'attention_weights': attention_weights})
+            attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
+            del attention_weight
+            del attention_df
+            
             if i%10000==0:
                 logging.debug(f"test:{i}")
+            
 
     # Calculate the accuracy and logging.debug the results
     accuracy = num_correct / len(validation_labels)
@@ -229,8 +238,5 @@ elif mode == 'test':
     logging.debug(f"\n{confusion_matrix}")
     confusion_matrix.to_csv('./att_results/confusion matrix.csv', index=False)
     # Save attention weights to a CSV file
-    attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy().tolist(),
-                                'label': true_labels,
-                                'prediction': predictions,
-                                'attention_weights': attention_weights})
-    attention_df.to_csv('./att_results/attention_weights.csv', index=False)
+    
+    
