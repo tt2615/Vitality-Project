@@ -186,10 +186,10 @@ elif mode == 'test':
     true_labels = []
     attention_weights = []
     with torch.no_grad():
-        for i in range(0, len(validation_inputs), batch_size):
-            inputs = validation_inputs[i:i+batch_size]
-            masks = validation_masks[i:i+batch_size]
-            labels = validation_labels[i:i+batch_size]
+        for i in range(0, len(validation_inputs)):
+            inputs = validation_inputs[i]
+            masks = validation_masks[i]
+            labels = validation_labels[i]
 
             inputs = inputs.to(device)
             masks = masks.to(device)
@@ -199,31 +199,33 @@ elif mode == 'test':
             outputs = model(inputs, attention_mask=masks, labels=labels)
             loss = criterion(outputs[1], labels)
 
+            attn_weights = torch.softmax(outputs.attentions[-1][0], dim=-1).squeeze()
+
             eval_loss += loss.item()
 
             _, preds = torch.max(outputs[1], dim=1)
             num_correct += torch.sum(preds == labels)
-            # predictions.extend(preds.cpu().numpy().tolist())
-            # true_labels.extend(labels.cpu().numpy().tolist())
+            predictions.extend(preds.cpu().numpy().tolist())
+            true_labels.extend(labels.cpu().numpy().tolist())
             
             # Get attention weights
-            attention_weight = []
-            for j in range(len(inputs)):
-                input_ids = inputs[j]
-                attention_mask = masks[j]
-                output = model(input_ids.unsqueeze(0), attention_mask=attention_mask.unsqueeze(0))
-                attn_weights = torch.softmax(output.attentions[-1][0], dim=-1)
-                attn_weights = attn_weights.squeeze()
-                attention_weight.append(attn_weights.cpu().numpy().tolist())
+            # attention_weight = []
+            # for j in range(len(inputs)):
+            #     input_ids = inputs[j]
+            #     attention_mask = masks[j]
+            #     output = model(input_ids.unsqueeze(0), attention_mask=attention_mask.unsqueeze(0))
+            #     attn_weights = torch.softmax(output.attentions[-1][0], dim=-1)
+            #     attn_weights = attn_weights.squeeze()
+            #     attention_weight.append(attn_weights.cpu().numpy().tolist())
             # attention_weights.extend(attention_weight)
             # print(validation_inputs.cpu().numpy().tolist())
-            attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy(),
+            attention_df = pd.Series({'text': inputs.cpu().numpy(),
                                 'label': labels.cpu().numpy(),
                                 'prediction': preds.cpu().numpy(),
-                                'attention_weights': attention_weight})
+                                'attention_weights': attn_weights})
             attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
-            del attention_weight
-            del attention_df
+            # del attn_weights
+            # del attention_df
 
             if i%10000==0:
                 logging.debug(f"test:{i}")
