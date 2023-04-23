@@ -203,8 +203,8 @@ elif mode == 'test':
 
             _, preds = torch.max(outputs[1], dim=1)
             num_correct += torch.sum(preds == labels)
-            predictions.extend(preds.cpu().numpy().tolist())
-            true_labels.extend(labels.cpu().numpy().tolist())
+            # predictions.extend(preds.cpu().numpy().tolist())
+            # true_labels.extend(labels.cpu().numpy().tolist())
             
             # Get attention weights
             attention_weight = []
@@ -216,14 +216,15 @@ elif mode == 'test':
                 attn_weights = attn_weights.squeeze()
                 attention_weight.append(attn_weights.cpu().numpy().tolist())
             # attention_weights.extend(attention_weight)
-            attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy().tolist(),
-                                'label': true_labels,
-                                'prediction': predictions,
-                                'attention_weights': attention_weights})
+            # print(validation_inputs.cpu().numpy().tolist())
+            attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy(),
+                                'label': labels.cpu().numpy(),
+                                'prediction': preds.cpu().numpy(),
+                                'attention_weights': attention_weight})
             attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
             del attention_weight
             del attention_df
-            
+
             if i%10000==0:
                 logging.debug(f"test:{i}")
             
@@ -238,5 +239,9 @@ elif mode == 'test':
     logging.debug(f"\n{confusion_matrix}")
     confusion_matrix.to_csv('./att_results/confusion matrix.csv', index=False)
     # Save attention weights to a CSV file
-    
+    # attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy().tolist(),
+    #                             'label': true_labels,
+    #                             'prediction': predictions,
+    #                             'attention_weights': attention_weights})
+    # attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
     
