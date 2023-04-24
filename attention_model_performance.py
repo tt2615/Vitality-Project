@@ -108,7 +108,7 @@ if mode == 'trian':
             optimizer.step()
             if i%10000==0:
                 logging.debug(f"train:{i}")
-        logging.debug(epoch)
+        logging.debug(f"train epoch:{epoch}")
 
         torch.save(model.state_dict(), "./models/attention_model.pt")
 
@@ -180,16 +180,17 @@ elif mode == 'test':
 
     # Evaluate the model on the validation set
     model.eval()
+    batch_size = 1
     eval_loss = 0
     num_correct = 0
     predictions = []
     true_labels = []
     attention_weights = []
     with torch.no_grad():
-        for i in range(0, len(validation_inputs)):
-            inputs = validation_inputs[i]
-            masks = validation_masks[i]
-            labels = validation_labels[i]
+        for i in range(0, len(validation_inputs),batch_size):
+            inputs = validation_inputs[i:i+batch_size]
+            masks = validation_masks[i:i+batch_size]
+            labels = validation_labels[i:i+batch_size]
 
             inputs = inputs.to(device)
             masks = masks.to(device)
@@ -226,7 +227,7 @@ elif mode == 'test':
             attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
             # del attn_weights
             # del attention_df
-
+            
             if i%10000==0:
                 logging.debug(f"test:{i}")
             
