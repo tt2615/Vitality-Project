@@ -77,7 +77,7 @@ epochs = 5
 learning_rate = 1e-6
 
 # Train the model
-if mode == 'train':
+if mode == 'test':
 
     # Load the pre-trained tokenizer and model
     model.to(device)
@@ -177,82 +177,83 @@ if mode == 'train':
 
 elif mode == 'test':
     logging.debug("enter testing mode")
-    param = torch.load("./models/attention_model.pt")
-    model.load_state_dict(param)
-    model.to(device)
-    logging.debug(f"data size: {len(validation_inputs)}")
+    for epoch in range(epochs):
+        logging.debug(f"{epoch}")
+        param = torch.load(f"./models/attention_model_{percent}_{epoch}.pt")
+        model.load_state_dict(param)
+        model.to(device)
+        logging.debug(f"data size: {len(validation_inputs)}")
 
-    # Evaluate the model on the validation set
-    model.eval()
-    batch_size = 1
-    eval_loss = 0
-    num_correct = 0
-    predictions = []
-    true_labels = []
-    attention_weights = []
-    with torch.no_grad():
-        for i in range(0, len(validation_inputs),batch_size):
-            inputs = validation_inputs[i:i+batch_size]
-            masks = validation_masks[i:i+batch_size]
-            labels = validation_labels[i:i+batch_size]
+        # Evaluate the model on the validation set
+        model.eval()
+        batch_size = 1
+        eval_loss = 0
+        num_correct = 0
+        predictions = []
+        true_labels = []
+        attention_weights = []
+        with torch.no_grad():
+            for i in range(0, len(validation_inputs),batch_size):
+                inputs = validation_inputs[i:i+batch_size]
+                masks = validation_masks[i:i+batch_size]
+                labels = validation_labels[i:i+batch_size]
 
-            inputs = inputs.to(device)
-            masks = masks.to(device)
-            labels = labels.to(device)
+                inputs = inputs.to(device)
+                masks = masks.to(device)
+                labels = labels.to(device)
 
 
-            outputs = model(inputs, attention_mask=masks, labels=labels)
-            loss = criterion(outputs[1], labels)
+                outputs = model(inputs, attention_mask=masks, labels=labels)
+                loss = criterion(outputs[1], labels)
 
-            attn_weights = torch.softmax(outputs.attentions[-1][0], dim=-1).squeeze()
-            attn_value = torch.unsqueeze(attn_weights, 0)
+                attn_weights = torch.softmax(outputs.attentions[-1][0], dim=-1).squeeze()
+                attn_value = torch.unsqueeze(attn_weights, 0)
 
-            eval_loss += loss.item()
+                eval_loss += loss.item()
 
-            _, preds = torch.max(outputs[1], dim=1)
-            # print(outputs[1])
-            # print(labels)
-            num_correct += torch.sum(preds == labels)
-            predictions.extend(preds.cpu().numpy().tolist())
-            true_labels.extend(labels.cpu().numpy().tolist())
-            
-            # Get attention weights
-            # attention_weight = []
-            # for j in range(len(inputs)):
-            #     input_ids = inputs[j]
-            #     attention_mask = masks[j]
-            #     output = model(input_ids.unsqueeze(0), attention_mask=attention_mask.unsqueeze(0))
-            #     attn_weights = torch.softmax(output.attentions[-1][0], dim=-1)
-            #     attn_weights = attn_weights.squeeze()
-            #     attention_weight.append(attn_weights.cpu().numpy().tolist())
-            # attention_weights.extend(attention_weight)
-            # print(validation_inputs.cpu().numpy().tolist())
-            # print(inputs.shape, labels.shape, preds.shape, attn_value.shape) 
-            attention_df = pd.Series({'text': inputs.cpu().numpy(),
-                                'label': labels.cpu().numpy(),
-                                'prediction': preds.cpu().numpy(),
-                                'attention_weights': attn_value.cpu().numpy()})
-            attention_df.to_frame().T.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
-            # del attn_weights
-            # del attention_df
-            # break
-            if i%10000==0:
-                logging.debug(f"test:{i}")
-            
+                _, preds = torch.max(outputs[1], dim=1)
+                # print(outputs[1])
+                # print(labels)
+                num_correct += torch.sum(preds == labels)
+                predictions.extend(preds.cpu().numpy().tolist())
+                true_labels.extend(labels.cpu().numpy().tolist())
+                
+                # Get attention weights
+                # attention_weight = []
+                # for j in range(len(inputs)):
+                #     input_ids = inputs[j]
+                #     attention_mask = masks[j]
+                #     output = model(input_ids.unsqueeze(0), attention_mask=attention_mask.unsqueeze(0))
+                #     attn_weights = torch.softmax(output.attentions[-1][0], dim=-1)
+                #     attn_weights = attn_weights.squeeze()
+                #     attention_weight.append(attn_weights.cpu().numpy().tolist())
+                # attention_weights.extend(attention_weight)
+                # print(validation_inputs.cpu().numpy().tolist())
+                # print(inputs.shape, labels.shape, preds.shape, attn_value.shape) 
+                attention_df = pd.Series({'text': inputs.cpu().numpy(),
+                                    'label': labels.cpu().numpy(),
+                                    'prediction': preds.cpu().numpy(),
+                                    'attention_weights': attn_value.cpu().numpy()})
+                attention_df.to_frame().T.to_csv(f'./att_results/attention_weights_{percent}_{epoch}.csv', mode='a', index=False, header=False)
+                # del attn_weights
+                # del attention_df
+                # break
+                if i%10000==0:
+                    logging.debug(f"test:{i}")
+                
 
-    # Calculate the accuracy and logging.debug the results
-    accuracy = num_correct / len(validation_labels)
-    logging.debug(f'Validation Loss: {eval_loss / len(validation_labels):.4f}, Validation Accuracy: {accuracy:.4f}')
+        # Calculate the accuracy and logging.debug the results
+        accuracy = num_correct / len(validation_labels)
+        logging.debug(f'Validation Loss: {eval_loss / len(validation_labels):.4f}, Validation Accuracy: {accuracy:.4f}')
 
-    # logging.debug classification report and confusion matrix
-    logging.debug(f"\n{classification_report(true_labels, predictions)}")
-    confusion_matrix = pd.crosstab(pd.Series(true_labels), pd.Series(predictions), rownames=['True'], colnames=['Predicted'])
-    logging.debug(f"\n{confusion_matrix}")
-    confusion_matrix.to_csv('./att_results/confusion matrix.csv', index=False)
-    # Save attention weights to a CSV file
-    # attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy().tolist(),
-    #                             'label': true_labels,
-    #                             'prediction': predictions,
-    #                             'attention_weights': attention_weights})
-    # attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
-    
+        # logging.debug classification report and confusion matrix
+        logging.debug(f"\n{classification_report(true_labels, predictions)}")
+        confusion_matrix = pd.crosstab(pd.Series(true_labels), pd.Series(predictions), rownames=['True'], colnames=['Predicted'])
+        logging.debug(f"\n{confusion_matrix}")
+        confusion_matrix.to_csv(f'./att_results/confusion matrix_{percent}_{epoch}.csv', index=False)
+        # Save attention weights to a CSV file
+        # attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy().tolist(),
+        #                             'label': true_labels,
+        #                             'prediction': predictions,
+        #                             'attention_weights': attention_weights})
+        # attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
