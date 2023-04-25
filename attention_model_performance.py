@@ -28,9 +28,10 @@ logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format
 
 df = pd.read_csv('./data/news_data_with_y1030_sentiment.csv')
 
-# df=df[1:20000]
+# config variables
+mode = 'train'
+percent = 30 
 
-mode = 'test'
 device = 'cuda' # changable
 if device == 'cuda' and torch.cuda.is_available():
     device = torch.device('cuda')
@@ -65,18 +66,18 @@ for text in df['Item_Title']:
 
 input_ids = torch.cat(input_ids, dim=0)
 attention_masks = torch.cat(attention_masks, dim=0)
-labels = torch.tensor(df['top20p_views'].values)
+labels = torch.tensor(df[f'top{percent}p_views'].values)
 
 train_inputs, validation_inputs, train_labels, validation_labels = train_test_split(input_ids, labels, random_state=42, test_size=0.1)
 train_masks, validation_masks, _, _ = train_test_split(attention_masks, input_ids, random_state=42, test_size=0.1)
 
 # Define the training parameters
 batch_size = 16
-epochs = 10
-learning_rate = 1e-5
+epochs = 5
+learning_rate = 1e-6
 
 # Train the model
-if mode == 'trian':
+if mode == 'train':
 
     # Load the pre-trained tokenizer and model
     model.to(device)
@@ -100,7 +101,10 @@ if mode == 'trian':
             optimizer.zero_grad()
 
             outputs = model(inputs, attention_mask=masks, labels=labels)
-            loss = criterion(outputs[1], labels)
+            output_logit = outputs[1].softmax(dim=1)
+            print(output_logit, labels)
+            loss = criterion(output_logit, labels)
+            print(loss)
 
             train_loss += loss.item()
 
@@ -108,9 +112,9 @@ if mode == 'trian':
             optimizer.step()
             if i%10000==0:
                 logging.debug(f"train:{i}")
-        logging.debug(f"train epoch:{epoch}")
+        logging.debug(f"train epoch:{epoch}, loss:{train_loss}")
 
-        torch.save(model.state_dict(), "./models/attention_model.pt")
+        torch.save(model.state_dict(),f"./models/attention_model_{percent}_{epoch}_sig.pt")
 
     #     # Evaluate the model on the validation set
     #     model.eval()
@@ -201,10 +205,13 @@ elif mode == 'test':
             loss = criterion(outputs[1], labels)
 
             attn_weights = torch.softmax(outputs.attentions[-1][0], dim=-1).squeeze()
+            attn_value = torch.unsqueeze(attn_weights, 0)
 
             eval_loss += loss.item()
 
             _, preds = torch.max(outputs[1], dim=1)
+            # print(outputs[1])
+            # print(labels)
             num_correct += torch.sum(preds == labels)
             predictions.extend(preds.cpu().numpy().tolist())
             true_labels.extend(labels.cpu().numpy().tolist())
@@ -220,14 +227,15 @@ elif mode == 'test':
             #     attention_weight.append(attn_weights.cpu().numpy().tolist())
             # attention_weights.extend(attention_weight)
             # print(validation_inputs.cpu().numpy().tolist())
+            # print(inputs.shape, labels.shape, preds.shape, attn_value.shape) 
             attention_df = pd.Series({'text': inputs.cpu().numpy(),
                                 'label': labels.cpu().numpy(),
                                 'prediction': preds.cpu().numpy(),
-                                'attention_weights': attn_weights.cpu().numpy()})
-            attention_df.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
+                                'attention_weights': attn_value.cpu().numpy()})
+            attention_df.to_frame().T.to_csv('./att_results/attention_weights.csv', mode='a', index=False, header=False)
             # del attn_weights
             # del attention_df
-            
+            # break
             if i%10000==0:
                 logging.debug(f"test:{i}")
             
