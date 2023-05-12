@@ -1,5 +1,6 @@
-from dataset import PostData, ToTensor, Log, random_split
-from models import LR, LLR
+#python main.py --model=LogR --device=cuda --batch=1024 --lr=1e-3 --optim=Adam --epoch=50 --comment=logistic
+from dataset import ProcessedData, ToTensor, Log, TokenizeText, random_split
+from models import LR, LLR, LogR, DeepMTL
 
 import torch
 torch.manual_seed(666)
@@ -14,16 +15,17 @@ import re
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', choices=['LR', 'LLR'], help="MTL model", required=True)
+parser.add_argument('--model', choices=['LR', 'LLR', 'LogR', 'Deep'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', type=str, default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
 parser.add_argument('--model_path', type=str, default=None, help="trained model path", required=False)
 parser.add_argument('--batch', type=int, default=64, help="batch size for feeding data", required=False)
 parser.add_argument('--lr', type=float, default=1e-3, help="learning rate for training model", required=False)
-parser.add_argument('--optim', choices=['SGD', 'Adam'], default="Adam", help="optimizer for training model", required=False)
+parser.add_argument('--optim', choices=['SGD', 'Adam', 'AdamW'], default="Adam", help="optimizer for training model", required=False)
 parser.add_argument('--epoch', type=int, default=100, help="epoch number for training model", required=False)
 parser.add_argument('--comment', type=str, help="additional comment for model", required=False)
+parser.add_argument('--percent', type=int, default=5, help="mark top percentage as viral", required=False)
 args = parser.parse_args()
 
 #Configure logging
@@ -42,10 +44,21 @@ else:
 print(f"Computing device: {device}")
 
 #2. Load data
-x_trans_list = [ToTensor()]
-y_trasn_list = [ToTensor(), Log()]
-data = PostData(onehot_cols=['sentiment'], tar_cols=['Item_Views', 'Item_Likes', 'Item_Comments'], \
-                x_transforms=x_trans_list, y_transforms=y_trasn_list)
+if args.model in ['LR', 'LLR']:
+    x_trans_list = [ToTensor()]
+    y_trans_list = [ToTensor(), Log()]
+    data = ProcessedData(onehot_cols=['sentiment'], tar_cols=['Item_Views', 'Item_Likes', 'Item_Comments'], \
+                    x_transforms=x_trans_list, y_transforms=y_trans_list, model_type='reg')
+elif args.model in ['LogR']:
+    x_trans_list = [ToTensor()]
+    y_trans_list = [ToTensor(), Log()]
+    data = ProcessedData(onehot_cols=['sentiment'], tar_cols = [f"top{args.percent}p_views", f"top{args.percent}p_likes", f"top{args.percent}p_comments"], \
+                    x_transforms=x_trans_list, y_transforms=y_trans_list, model_type='log')
+else: #"DeepMTL"
+    x_trans_list = [TokenizeText(), ToTensor()]
+    y_trans_list = [ToTensor()]
+    data = ProcessedData(tar_cols = [f"top{args.percent}p_views", f"top{args.percent}p_likes", f"top{args.percent}p_comments"], \
+                    x_transforms=x_trans_list, y_transforms=y_trans_list, model_type='dl')
 train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1]) #train:test = 8:2
 # print(train_data[10])
 # exit()
@@ -64,6 +77,10 @@ if args.model == 'LR':
     model = LR(data.get_feature_num(), 3).to(device)
 elif args.model == 'LLR':
     model = LLR(data.get_feature_num(), 3).to(device)
+elif args.model == 'LogR':
+    model = LogR(data.get_feature_num(), 3).to(device)
+elif args.model == 'Deep':
+    model = DeepMTL(data.get_author_num(), data.get_compnay_num(), data.get_sentiment_num(), data.get_topic_num())
 else: # default is LR
     model = LR(data.get_feature_num(), 3).to(device)
 print(f"Model loaded: {args.model}")
@@ -77,6 +94,8 @@ atexit.register(exit_handler)
 #4. Select optimizer
 if args.optim=='SGD':
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+elif args.optim=='AdamW': # good for transformer based
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 else: # default adam
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 

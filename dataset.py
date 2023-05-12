@@ -1,14 +1,16 @@
+import math
 import pandas as pd
+
 import torch
 torch.manual_seed(0)
 from torch.utils.data import Dataset
-
-import math
 from torch import default_generator, randperm
 from torch._utils import _accumulate
 from torch.utils.data.dataset import Subset
 
-class PostData(Dataset):
+from transformers import BertTokenizer
+
+class ProcessedData(Dataset):
     def __init__(self, onehot_cols=[], tar_cols=[], x_transforms=None, y_transforms=None):
 
         #load data
@@ -17,7 +19,7 @@ class PostData(Dataset):
         #generate onehot encoding
         self.data = pd.get_dummies(self.data, columns=onehot_cols)
 
-        #drop irrelevant columns
+        #select columns
         text_cols = ['Item_Title', 'title', 'news_text']
         cat_cols = ['Item_Author', 'Company_ID', 'sentiment']
         self.data = self.data.drop(text_cols + cat_cols, axis=1, errors='ignore')
@@ -49,6 +51,18 @@ class PostData(Dataset):
 
     def get_feature_num(self):
         return len(self.data.columns) - len(self.tar_cols)
+
+    def get_author_num(self):
+        return self.data['Item_Author'].unique()
+    
+    def get_compnay_num(self):
+        return self.data['Company_ID'].unique()
+    
+    def get_topic_num(self):
+        return 5
+    
+    def get_sentiment_num(self):
+        return 3
     
 # Data transforms
 
@@ -68,6 +82,38 @@ class Normalize(object):
     def __call__(self, data):
         return 
 
+class TokenizeText(object):
+    def __call__(self, data):
+        tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+        input_ids_title = []
+        attention_masks_title = []
+        for text in data['Item_Title']:
+            encoded_dict = tokenizer.encode_plus(text,
+                                                add_special_tokens=True,
+                                                max_length=64,
+                                                pad_to_max_length=True,
+                                                return_attention_mask=True,
+                                                return_tensors='pt')
+            input_ids_title.append(encoded_dict['input_ids'])
+            attention_masks_title.append(encoded_dict['attention_mask'])
+        input_ids_title = torch.cat(input_ids_title, dim=0)
+        attention_masks_title = torch.cat(attention_masks_title, dim=0)
+
+        input_ids_content = []
+        attention_masks_content = []
+        for text in data['news_text']:
+            encoded_dict = tokenizer.encode_plus(text,
+                                                add_special_tokens=True,
+                                                max_length=64,
+                                                pad_to_max_length=True,
+                                                return_attention_mask=True,
+                                                return_tensors='pt')
+            input_ids_content.append(encoded_dict['input_ids'])
+            attention_masks_content.append(encoded_dict['attention_mask'])
+        input_ids_content = torch.cat(input_ids_content, dim=0)
+        attention_masks_content = torch.cat(attention_masks_content, dim=0)
+
+        return input_ids_title, attention_masks_title, input_ids_content, attention_masks_content
 
 
 
