@@ -105,7 +105,7 @@ else:
 train_inputs, validation_inputs, train_labels, validation_labels = train_test_split(inputs, labels, random_state=42, test_size=0.1)
 
 # setup model
-model = Deep(num_author=len(author_index), num_company=len(company_index), num_sentiment=len(sentiment_index), num_topic=5)
+model = Deep(num_author=len(author_index), num_company=len(company_index), num_sentiment=len(sentiment_index), num_topic=5, hidden_size=64)
 criterion = torch.nn.CrossEntropyLoss()
 
 # Define the training parameters

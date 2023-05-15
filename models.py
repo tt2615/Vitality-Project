@@ -279,15 +279,15 @@ class DeepMTL(nn.Module):
         
 class Deep(nn.Module):
     """Deep model for single task"""
-    def __init__(self, num_author, num_company, num_sentiment, num_topic):
+    def __init__(self, num_author, num_company, num_sentiment, num_topic, hidden_size):
         super(Deep, self).__init__()
 
         # define model
         configuration = BertConfig.from_pretrained('bert-base-chinese')
-        hidden_size = configuration.hidden_size
-
         self.language_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
-        self.content_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
+        # self.content_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
+        self.dim_reducer = nn.Linear(configuration.hidden_size, hidden_size)
+        
         self.author_embedding = nn.Embedding(num_author, hidden_size)
         self.company_embedding = nn.Embedding(num_company, hidden_size)
         self.sentiment_embedding = nn.Embedding(num_sentiment, hidden_size)
@@ -306,7 +306,7 @@ class Deep(nn.Module):
     def forward(self, x):
         # process language information
         _, title_embedding = self.language_encoder(x[:,0:32].int(), attention_mask=x[:,32:64].int(), return_dict=False) #batch * hd_size
-        _, content_embdding = self.content_encoder(x[:,64:320].int(), attention_mask=x[:,320:576].int(), return_dict=False) #batch * hd_size
+        #_, content_embdding = self.content_encoder(x[:,64:320].int(), attention_mask=x[:,320:576].int(), return_dict=False) #batch * hd_size
 
         # process categorical information
         author_embedding = self.author_embedding(x[:,576].int())
@@ -315,7 +315,7 @@ class Deep(nn.Module):
         topic_embedding = self.topic_mlp(x[:,579:584])
         categorical_embedding = author_embedding + company_embedding + sentiment_embedding + topic_embedding
 
-        input = title_embedding + content_embdding + categorical_embedding #batch * hd_size
+        input = title_embedding + categorical_embedding #batch * hd_size + content_embdding
 
         out = self.output_layer(input) #batch * 2
         return out
