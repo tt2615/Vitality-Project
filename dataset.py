@@ -90,7 +90,7 @@ class TokenizeText(object):
         for text in data['Item_Title']:
             encoded_dict = tokenizer.encode_plus(text,
                                                 add_special_tokens=True,
-                                                max_length=64,
+                                                max_length=32,
                                                 pad_to_max_length=True,
                                                 return_attention_mask=True,
                                                 return_tensors='pt')
@@ -103,8 +103,8 @@ class TokenizeText(object):
         attention_masks_content = []
         for text in data['news_text']:
             encoded_dict = tokenizer.encode_plus(text,
-                                                add_special_tokens=True,
-                                                max_length=64,
+                                                add_special_tokens=True, 
+                                                max_length=256,
                                                 pad_to_max_length=True,
                                                 return_attention_mask=True,
                                                 return_tensors='pt')

@@ -21,10 +21,9 @@ from models import Deep
 import logging
 LOG_PATH = (f"./logs/deep.log")
 logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-DATA_PATH = './data/feed_data.pt'
+DATA_PATH = './data/feed_data.pt' 
 
-
-df = pd.read_csv('./data/news_data_with_y1030_sentiment.csv')
+df = pd.read_csv('./data/processed_data.csv')
 
 # config variables
 mode = 'train'
@@ -41,7 +40,8 @@ logging.debug(f"Computing device: {device}")
 
 # parse inputs
 if os.path.isfile(DATA_PATH):
-    inputs, labels = torch.load(DATA_PATH)
+    inputs, labels, author_index, company_index, sentiment_index = torch.load(DATA_PATH)
+
 else:
     tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
     df['Item_Author_f'], author_index = pd.factorize(df['Item_Author'])
@@ -51,49 +51,61 @@ else:
     inputs = []
     for index, row in tqdm(df.iterrows(), total=len(df)):
         row_input = []
-        # news title [0,1]
+        # news title [0-31], title mask [32-63]
         title = row['Item_Title']
         encoded_dict = tokenizer.encode_plus(title,
                                             add_special_tokens=True,
-                                            max_length=64,
-                                            pad_to_max_length=True,
+                                            max_length=32,
+                                            padding='max_length',
+                                            truncation=True,
+                                            # pad_to_max_length=True,
                                             return_attention_mask=True,
                                             return_tensors='pt')
-        row_input.append(encoded_dict['input_ids'])
-        row_input.append(encoded_dict['attention_mask'])
-        # news text [2,3]
+        row_input.append(encoded_dict['input_ids'].squeeze())
+        row_input.append(encoded_dict['attention_mask'].squeeze())
+        # news text [64-319], text mask [320-575]
         text = row['news_text']
         encoded_dict = tokenizer.encode_plus(text,
                                             add_special_tokens=True,
-                                            max_length=128,
-                                            pad_to_max_length=True,
+                                            max_length=256,
+                                            padding='max_length',
+                                            truncation=True,
+                                            # pad_to_max_length=True,
                                             return_attention_mask=True,
                                             return_tensors='pt')
-        row_input.append(encoded_dict['input_ids'])
-        row_input.append(encoded_dict['attention_mask'])
-        # author index [4]
+        row_input.append(encoded_dict['input_ids'].squeeze())
+        row_input.append(encoded_dict['attention_mask'].squeeze())
+        # author index [576]
         author = row['Item_Author_f']
-        row_input.append(torch.tensor(author))
-        # company index [5]
+        row_input.append(torch.tensor([author]))
+        # company index [577]
         company = row['Company_ID_f']
-        row_input.append(torch.tensor(company))
-        # sentiment index [6]
+        row_input.append(torch.tensor([company]))
+        # sentiment index [578]
         sentiment = row['sentiment_f']
-        row_input.append(torch.tensor(sentiment))
+        row_input.append(torch.tensor([sentiment]))
+        # topic probability [579, 580, 581, 582, 583]
+        topics = row[['Topic_1', 'Topic_2', 'Topic_3', 'Topic_4', 'Topic_5']]
+        row_input.append(torch.tensor(topics).squeeze())
+        row_input = torch.cat(row_input, dim=0)
+        # print(row_input.shape) #[1,584]
 
-    inputs = torch.cat(inputs, dim=0)
+        inputs.append(row_input)
+
+    inputs = torch.cat(inputs).view(-1,len(row_input))
+    print(inputs.shape)
 
     # label
     labels = torch.tensor(df[f'top{percent}p_views'].values)
 
-    #save procussed data
-    torch.save((inputs, labels), DATA_PATH)
+    # save procussed data
+    torch.save((inputs, labels, author_index, company_index, sentiment_index), DATA_PATH)
 
 # split data
 train_inputs, validation_inputs, train_labels, validation_labels = train_test_split(inputs, labels, random_state=42, test_size=0.1)
 
 # setup model
-model = Deep(len(author_index), len(company_index), len(sentiment_index))
+model = Deep(num_author=len(author_index), num_company=len(company_index), num_sentiment=len(sentiment_index), num_topic=5)
 criterion = torch.nn.CrossEntropyLoss()
 
 # Define the training parameters
@@ -123,13 +135,8 @@ if mode == 'train':
 
             optimizer.zero_grad()
 
-            title_embed = model(inputs[0], attention_mask=inputs[1])
-            text_embed = model(inputs[2], attention_mask=inputs[3])
-
             outputs = model(inputs)
-            output_logit = outputs[1].softmax(dim=1)
-            print(output_logit, labels)
-            loss = criterion(output_logit, labels)
+            loss = criterion(outputs, labels)
             print(loss)
 
             train_loss += loss.item()

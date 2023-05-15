@@ -283,17 +283,20 @@ class Deep(nn.Module):
         super(Deep, self).__init__()
 
         # define model
-        configuration = BertConfig.from_pretrained('bert-base-chinese', output_hidden_states=True, output_attentions=True)
+        configuration = BertConfig.from_pretrained('bert-base-chinese')
         hidden_size = configuration.hidden_size
 
         self.language_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
-        # self.content_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
+        self.content_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
         self.author_embedding = nn.Embedding(num_author, hidden_size)
         self.company_embedding = nn.Embedding(num_company, hidden_size)
         self.sentiment_embedding = nn.Embedding(num_sentiment, hidden_size)
-        self.topic_embedding = nn.Embedding(num_topic, hidden_size)
+        self.topic_mlp = nn.Linear(num_topic, hidden_size)
 
-        self.output = nn.Linear(hidden_size, 2)
+        self.output_layer = nn.Sequential(
+            nn.Linear(hidden_size, 2),
+            nn.Softmax(dim=1)
+        ) 
         # define loss function
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
@@ -302,23 +305,19 @@ class Deep(nn.Module):
 
     def forward(self, x):
         # process language information
-        title_embedding = self.language_encoder(x[0])
-        content_embdding = self.language_encoder(x[1])
+        _, title_embedding = self.language_encoder(x[:,0:32].int(), attention_mask=x[:,32:64].int(), return_dict=False) #batch * hd_size
+        _, content_embdding = self.content_encoder(x[:,64:320].int(), attention_mask=x[:,320:576].int(), return_dict=False) #batch * hd_size
 
         # process categorical information
-        author_embedding = self.author_embedding(x[2])
-        company_embedding = self.company_embedding(x[3])
-        sentiment_embedding = self.sentiment_embedding(x[4])
-        # topic_embedding = self.topic_embedding(x[5])
-        categorical_embedding = author_embedding + company_embedding + sentiment_embedding # + topic_embedding
+        author_embedding = self.author_embedding(x[:,576].int())
+        company_embedding = self.company_embedding(x[:,577].int())
+        sentiment_embedding = self.sentiment_embedding(x[:,578].int())
+        topic_embedding = self.topic_mlp(x[:,579:584])
+        categorical_embedding = author_embedding + company_embedding + sentiment_embedding + topic_embedding
 
-        # t1_input = title_embedding + categorical_embedding
-        input = title_embedding + content_embdding + categorical_embedding
-        # t3_input = title_embedding + content_embdding + categorical_embedding
+        input = title_embedding + content_embdding + categorical_embedding #batch * hd_size
 
-        bert_out = self.topic_encoder(x)
-        print(bert_out.shape)
-        out = self.output(input).softmax()
+        out = self.output_layer(input) #batch * 2
         return out
     
     def compute_loss(self, y_pred, y):
