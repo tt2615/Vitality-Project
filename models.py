@@ -305,7 +305,7 @@ class Deep(nn.Module):
 
     def forward(self, x):
         # process language information
-        _, title_embedding = self.language_encoder(x[:,0:32].int(), attention_mask=x[:,32:64].int(), return_dict=False) #batch * hd_size
+        _, title_embedding = self.dim_reducer(self.language_encoder(x[:,0:32].int(), attention_mask=x[:,32:64].int(), return_dict=False)) #batch * hd_size
         #_, content_embdding = self.content_encoder(x[:,64:320].int(), attention_mask=x[:,320:576].int(), return_dict=False) #batch * hd_size
 
         # process categorical information
