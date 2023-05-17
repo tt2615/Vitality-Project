@@ -19,15 +19,16 @@ from sklearn.metrics import classification_report
 from models import Deep
 
 import logging
-LOG_PATH = (f"./logs/deep.log")
-logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-DATA_PATH = './data/feed_data.pt' 
-
-df = pd.read_csv('./data/processed_data.csv')
 
 # config variables
 mode = 'test'
 percent = 5 
+
+LOG_PATH = (f"./logs/deep_{mode}.log")
+logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+DATA_PATH = './data/feed_data.pt' 
+
+df = pd.read_csv('./data/processed_data.csv')
 
 device = 'cuda' # changable
 if device == 'cuda' and torch.cuda.is_available():
@@ -209,7 +210,7 @@ elif mode == 'test':
         logging.debug(f"\n{classification_report(true_labels, predictions)}")
         confusion_matrix = pd.crosstab(pd.Series(true_labels), pd.Series(predictions), rownames=['True'], colnames=['Predicted'])
         logging.debug(f"\n{confusion_matrix}")
-        confusion_matrix.to_csv(f'./att_results/confusion matrix_{percent}_{epoch}.csv', index=False)
+        confusion_matrix.to_csv(f'./att_results/deep confusion matrix_{percent}_{epoch}.csv', index=False)
         # Save attention weights to a CSV file
         # attention_df = pd.DataFrame({'text': validation_inputs.cpu().numpy().tolist(),
         #                             'label': true_labels,
