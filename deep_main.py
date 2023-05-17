@@ -26,7 +26,7 @@ DATA_PATH = './data/feed_data.pt'
 df = pd.read_csv('./data/processed_data.csv')
 
 # config variables
-mode = 'train'
+mode = 'test'
 percent = 5 
 
 device = 'cuda' # changable
@@ -137,7 +137,7 @@ if mode == 'train':
 
             outputs = model(inputs)
             loss = criterion(outputs, labels)
-            print(loss)
+            # print(loss)
 
             train_loss += loss.item()
 
@@ -147,13 +147,13 @@ if mode == 'train':
                 logging.debug(f"train:{i}")
         logging.debug(f"train epoch:{epoch}, loss:{train_loss}")
 
-        torch.save(model.state_dict(),f"./models/attention_model_{percent}_{epoch}_sig.pt")
+        torch.save(model.state_dict(),f"./models/deep_model_{percent}_{epoch}_sig.pt")
 
 elif mode == 'test':
     logging.debug("enter testing mode")
     for epoch in range(epochs):
         logging.debug(f"{epoch}")
-        param = torch.load(f"./models/attention_model_{percent}_{epoch}.pt")
+        param = torch.load(f"./models/deep_model_{percent}_{epoch}.pt")
         model.load_state_dict(param)
         model.to(device)
         logging.debug(f"data size: {len(validation_inputs)}")
@@ -165,7 +165,7 @@ elif mode == 'test':
         num_correct = 0
         predictions = []
         true_labels = []
-        attention_weights = []
+        # attention_weights = []
         with torch.no_grad():
             for i in range(0, len(validation_inputs),batch_size):
                 inputs = validation_inputs[i:i+batch_size]
@@ -174,39 +174,26 @@ elif mode == 'test':
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
-
                 outputs = model(inputs)
-                loss = criterion(outputs[1], labels)
+                loss = criterion(outputs, labels)
 
-                attn_weights = torch.softmax(outputs.attentions[-1][0], dim=-1).squeeze()
-                attn_value = torch.unsqueeze(attn_weights, 0)
+                # attn_weights = torch.softmax(outputs.attentions[-1][0], dim=-1).squeeze()
+                # attn_value = torch.unsqueeze(attn_weights, 0)
 
                 eval_loss += loss.item()
 
-                _, preds = torch.max(outputs[1], dim=1)
+                _, preds = torch.max(outputs, dim=1)
                 # print(outputs[1])
                 # print(labels)
                 num_correct += torch.sum(preds == labels)
                 predictions.extend(preds.cpu().numpy().tolist())
                 true_labels.extend(labels.cpu().numpy().tolist())
                 
-                # Get attention weights
-                # attention_weight = []
-                # for j in range(len(inputs)):
-                #     input_ids = inputs[j]
-                #     attention_mask = masks[j]
-                #     output = model(input_ids.unsqueeze(0), attention_mask=attention_mask.unsqueeze(0))
-                #     attn_weights = torch.softmax(output.attentions[-1][0], dim=-1)
-                #     attn_weights = attn_weights.squeeze()
-                #     attention_weight.append(attn_weights.cpu().numpy().tolist())
-                # attention_weights.extend(attention_weight)
-                # print(validation_inputs.cpu().numpy().tolist())
-                # print(inputs.shape, labels.shape, preds.shape, attn_value.shape) 
-                attention_df = pd.Series({'text': inputs.cpu().numpy(),
-                                    'label': labels.cpu().numpy(),
-                                    'prediction': preds.cpu().numpy(),
-                                    'attention_weights': attn_value.cpu().numpy()})
-                attention_df.to_frame().T.to_csv(f'./att_results/attention_weights_{percent}_{epoch}.csv', mode='a', index=False, header=False)
+                # attention_df = pd.Series({'text': inputs.cpu().numpy(),
+                #                     'label': labels.cpu().numpy(),
+                #                     'prediction': preds.cpu().numpy(),
+                #                     'attention_weights': attn_value.cpu().numpy()})
+                # attention_df.to_frame().T.to_csv(f'./att_results/attention_weights_{percent}_{epoch}.csv', mode='a', index=False, header=False)
                 # del attn_weights
                 # del attention_df
                 # break

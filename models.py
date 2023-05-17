@@ -31,7 +31,7 @@ class LR(nn.Module):
         loss = self.loss_fn(y_pred, y)
         return loss
     
-    def eval(self, eval_data:DataLoader, device):
+    def evaluate(self, eval_data:DataLoader, device):
         with torch.no_grad():
             eval_loss = 0
             metrics_vals = {type(k).__name__:torch.zeros(self.n_tasks).to(device) for k in self.evaluators}
@@ -77,7 +77,7 @@ class LogR(nn.Module):
         loss = self.loss_fn(y_pred, y)
         return loss
     
-    def eval(self, eval_data:DataLoader, device):
+    def evaluate(self, eval_data:DataLoader, device):
         with torch.no_grad():
             eval_loss = 0
             metrics_vals = {type(k).__name__:torch.zeros(self.n_tasks).to(device) for k in self.evaluators}
@@ -130,7 +130,7 @@ class LLR(nn.Module):
         loss = l2_norm_square + self.lambda1*theta_reg + self.lambda2*gamma_reg
         return loss
     
-    def eval(self, eval_data:DataLoader, device):
+    def evaluate(self, eval_data:DataLoader, device):
         with torch.no_grad():
             eval_loss = 0
             metrics_vals = {type(k).__name__:torch.zeros(3).to(device) for k in self.evaluators}
@@ -177,7 +177,7 @@ class SLR(nn.Module):
         loss = self.loss_fn(y_pred, y)
         return loss
     
-    def eval(self, eval_data:DataLoader, device):
+    def evaluate(self, eval_data:DataLoader, device):
         with torch.no_grad():
             eval_loss = 0
             metrics_vals = {type(k).__name__:torch.zeros(1).to(device) for k in self.evaluators}
@@ -257,7 +257,7 @@ class DeepMTL(nn.Module):
         return w1*loss1 + w2*loss2 + w3*loss3
     
 
-    def eval(self, eval_data:DataLoader, device, *args):
+    def evaluate(self, eval_data:DataLoader, device, *args):
         w1, w2, w3 = args[0], args[1], args[2]
         with torch.no_grad():
             eval_loss = 0
@@ -325,7 +325,7 @@ class Deep(nn.Module):
         return self.loss_fn(y_pred[:,0], y[:,0])
     
 
-    def eval(self, eval_data:DataLoader, device, *args):
+    def evaluate(self, eval_data:DataLoader, device, *args):
         w1, w2, w3 = args[0], args[1], args[2]
         with torch.no_grad():
             eval_loss = 0
