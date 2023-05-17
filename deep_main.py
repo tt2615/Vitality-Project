@@ -22,7 +22,7 @@ import logging
 
 # config variables
 mode = 'test'
-percent = 5 
+percent = 10 
 
 LOG_PATH = (f"./logs/deep_{mode}.log")
 logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -146,9 +146,9 @@ if mode == 'train':
             optimizer.step()
             if i%10000==0:
                 logging.debug(f"train:{i}")
-        logging.debug(f"train epoch:{epoch}, loss:{train_loss}")
+        logging.debug(f"train epoch:{epoch}, loss:{train_loss/len(train_inputs)}")
 
-        torch.save(model.state_dict(),f"./models/deep_model_{percent}_{epoch}_sig.pt")
+        torch.save(model.state_dict(),f"./models/deep_model_{percent}_{epoch}.pt")
 
 elif mode == 'test':
     logging.debug("enter testing mode")

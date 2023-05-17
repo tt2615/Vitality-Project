@@ -285,8 +285,9 @@ class Deep(nn.Module):
         # define model
         configuration = BertConfig.from_pretrained('bert-base-chinese')
         self.language_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
-        # self.content_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
-        self.dim_reducer = nn.Linear(configuration.hidden_size, hidden_size)
+        self.content_encoder = BertModel.from_pretrained('bert-base-chinese', config=configuration)
+        self.title_dim_reducer = nn.Linear(configuration.hidden_size, hidden_size)
+        self.text_dim_reducer = nn.Linear(configuration.hidden_size, hidden_size)
         
         self.author_embedding = nn.Embedding(num_author, hidden_size)
         self.company_embedding = nn.Embedding(num_company, hidden_size)
@@ -305,18 +306,19 @@ class Deep(nn.Module):
 
     def forward(self, x):
         # process language information
-        _, title_embedding = self.language_encoder(x[:,0:32].int(), attention_mask=x[:,32:64].int(), return_dict=False) #batch * hd_size
-        title_embedding = self.dim_reducer(title_embedding)
-        #_, content_embdding = self.content_encoder(x[:,64:320].int(), attention_mask=x[:,320:576].int(), return_dict=False) #batch * hd_size
+        _, title_embedding = self.language_encoder(x[:,0:32].int(), attention_mask=x[:,32:64].int(), return_dict=False) 
+        title_embedding = self.title_dim_reducer(title_embedding) #batch * hd_size
+        _, content_embdding = self.content_encoder(x[:,64:320].int(), attention_mask=x[:,320:576].int(), return_dict=False)
+        content_embdding = self.text_dim_reducer(content_embdding) #batch * hd_size
 
         # process categorical information
         author_embedding = self.author_embedding(x[:,576].int())
         company_embedding = self.company_embedding(x[:,577].int())
         sentiment_embedding = self.sentiment_embedding(x[:,578].int())
         topic_embedding = self.topic_mlp(x[:,579:584])
-        categorical_embedding = author_embedding + company_embedding + sentiment_embedding + topic_embedding
+        categorical_embedding = author_embedding + company_embedding + sentiment_embedding + topic_embedding 
 
-        input = title_embedding + categorical_embedding #batch * hd_size + content_embdding
+        input = title_embedding + content_embdding + categorical_embedding #batch * hd_size + content_embdding
 
         out = self.output_layer(input) #batch * 2
         return out
