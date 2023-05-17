@@ -22,7 +22,7 @@ import logging
 
 # config variables
 mode = 'test'
-percent = 10 
+percent = 5
 
 LOG_PATH = (f"./logs/deep_{mode}.log")
 logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -111,7 +111,7 @@ criterion = torch.nn.CrossEntropyLoss()
 
 # Define the training parameters
 batch_size = 16
-epochs = 5
+epochs = 25
 learning_rate = 1e-6
 
 # Train the model
@@ -145,7 +145,7 @@ if mode == 'train':
             loss.backward()
             optimizer.step()
             if i%10000==0:
-                logging.debug(f"train:{i}")
+                logging.debug(f"train:{i}, loss:{loss/len(batch_size)}")
         logging.debug(f"train epoch:{epoch}, loss:{train_loss/len(train_inputs)}")
 
         torch.save(model.state_dict(),f"./models/deep_model_{percent}_{epoch}.pt")
