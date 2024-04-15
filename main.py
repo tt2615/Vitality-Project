@@ -64,7 +64,7 @@ train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1]) #train:val
 # exit()
 
 train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
-valid_dataloader = DataLoader(valid_data, batch_size=len(valid_data), shuffle=True)
+valid_dataloader = DataLoader(valid_data, batch_size=len(valid_data), shuffle=True) #
 test_dataloader = DataLoader(test_data, batch_size=len(test_data), shuffle=True)
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
 

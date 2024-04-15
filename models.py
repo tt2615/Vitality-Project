@@ -8,7 +8,7 @@ from transformers import BertModel, BertConfig
 
 from sklearn.metrics import accuracy_score, classification_report
 import numpy as np
-from evaluator import R2_SCORE, ADJUST_R2, ACCURACY
+from evaluator import R2_SCORE, ADJUST_R2, ACCURACY, RECALL, PRECISION, F1
 
 class LR(nn.Module):
 
@@ -186,7 +186,7 @@ class Bert(nn.Module):
         self.loss_fn = nn.CrossEntropyLoss()
 
         # define evaluator
-        self.evaluators = [ACCURACY()]
+        self.evaluators = [ACCURACY()] #,RECALL(),PRECISION(),F1()
 
     def forward(self, text_input, non_text_input):
         #text representation
@@ -234,7 +234,24 @@ class Bert(nn.Module):
     def eval(self, eval_data:DataLoader, device):
         with torch.no_grad():
             eval_loss = 0
-            # metrics_vals = {type(k).__name__:torch.zeros(1).to(device) for k in self.evaluators}
+            metrics_vals = {type(k).__name__:torch.zeros(1).to(device) for k in self.evaluators}
+
+
+            preds, ys = torch.tensor([]), torch.tensor([])
+            for text_input, non_text_input, y in eval_data:
+                y = y.squeeze().to(torch.long)
+                pred = self.forward(text_input, non_text_input)
+                eval_loss = self.compute_loss(pred, y)
+                ys = torch.cat((ys,y))
+                preds = torch.cat((preds, pred.max(1).indices))
+                # print(ys, preds)
+                
+            for e in self.evaluators:
+                metrics_vals[type(e).__name__] += e(ys, preds) #[1, task]
+
+            return eval_loss, metrics_vals
+
+
             acc=0
             for text_input, non_text_input, y in eval_data:
                 pred_logit = self.forward(text_input, non_text_input)
@@ -244,4 +261,4 @@ class Bert(nn.Module):
                 acc = accuracy_score(pred, ground_truth)
                 # print(classification_report(pred, ground_truth))
 
-            return eval_loss, acc
+            return eval_loss, metrics_vals

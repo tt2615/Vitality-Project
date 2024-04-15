@@ -75,6 +75,7 @@ class PostData(Dataset):
 
         if self.x_trans_list:
             for trsfm in self.x_trans_list:
+                text_input = np.stack(text_input.values)
                 text_input = trsfm(text_input)
                 non_text_input = trsfm(non_text_input) 
         if self.y_trans_list:
@@ -104,8 +105,11 @@ class PostData(Dataset):
 # Converts a numpy array to a torch tensor
 class ToTensor(object):
     def __call__(self, data):
-        # print(data)
-        return torch.from_numpy(data)
+        return torch.tensor(data)
+    
+# class TextInputToTensor(object):
+#     def __call__(self, data, index):
+#         return torch.from_numpy(data)
     
 
 # Log the value

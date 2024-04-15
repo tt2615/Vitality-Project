@@ -1,6 +1,6 @@
 import torch
 
-from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, f1_score
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, f1_score, classification_report
 
 class R2_SCORE:
     def __call__(self, y, y_pred, *args):
@@ -56,6 +56,7 @@ class ACCURACY:
     def __call__(self, y, y_pred, *args):
         y, y_pred = y.cpu(), y_pred.cpu()
         accuracy = accuracy_score(y, y_pred)
+        print(classification_report(y,y_pred))
         return accuracy
     
 class RECALL:
