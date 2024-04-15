@@ -26,10 +26,11 @@ parser.add_argument('--mode', choices=['train', 'test'], default='train', help="
 parser.add_argument('--model_path', type=str, default=None, help="trained model path", required=False)
 parser.add_argument('--batch', type=int, default=64, help="batch size for feeding data", required=False)
 parser.add_argument('--lr', type=float, default=1e-3, help="learning rate for training model", required=False)
-parser.add_argument('--optim', choices=['SGD', 'Adam'], default="Adam", help="optimizer for training model", required=False)
+parser.add_argument('--optim', choices=['SGD', 'Adam', 'AdamW'], default="Adam", help="optimizer for training model", required=False)
 parser.add_argument('--epoch', type=int, default=100, help="epoch number for training model", required=False)
 parser.add_argument('--dim', type=int, default=20, help="dimension for latent factors", required=False)
 parser.add_argument('--comment', type=str, help="additional comment for model", required=False)
+parser.add_argument('--percent', type=int, default=5, help="mark top percentage as viral", required=False)
 args = parser.parse_args()
 
 #Configure logging
@@ -94,6 +95,8 @@ atexit.register(exit_handler)
 #4. Select optimizer
 if args.optim=='SGD':
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+elif args.optim=='AdamW': # good for transformer based
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 else: # default adam
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 

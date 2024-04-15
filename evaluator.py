@@ -1,5 +1,7 @@
 import torch
 
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, f1_score
+
 class R2_SCORE:
     def __call__(self, y, y_pred, *args):
         # Compute the target mean for each task
@@ -44,3 +46,32 @@ class ACCURACY:
     
 
     
+class CONF_MATRIX:
+    def __call__(self, y, y_pred, *args):
+        y, y_pred = y.cpu(), y_pred.cpu()
+        cm = confusion_matrix(y, y_pred)
+        return cm
+    
+class ACCURACY:
+    def __call__(self, y, y_pred, *args):
+        y, y_pred = y.cpu(), y_pred.cpu()
+        accuracy = accuracy_score(y, y_pred)
+        return accuracy
+    
+class RECALL:
+    def __call__(self, y, y_pred, *args):
+        y, y_pred = y.cpu(), y_pred.cpu()
+        recall = recall_score(y, y_pred)
+        return recall
+    
+class PRECISION:
+    def __call__(self, y, y_pred, *args):
+        y, y_pred = y.cpu(), y_pred.cpu()
+        precision = precision_score(y, y_pred)
+        return precision
+    
+class F1:
+    def __call__(self, y, y_pred, *args):
+        y, y_pred = y.cpu(), y_pred.cpu()
+        f1 = f1_score(y, y_pred)
+        return f1
