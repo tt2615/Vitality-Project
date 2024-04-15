@@ -9,6 +9,7 @@ tqdm = "*"
 transformers = "*"
 scikit-learn = "*"
 numpy = "*"
+pyreadr = "*"
 
 [dev-packages]
 

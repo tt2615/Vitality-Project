@@ -35,3 +35,12 @@ class ADJUST_R2:
 
         return adj_r2
     
+class ACCURACY:
+    def __call__(self, y, y_pred, *args):
+        print(y)
+        print(y_pred.max(1).indices)
+        print(sum(y==y_pred))
+        return 0
+    
+
+    

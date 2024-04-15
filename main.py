@@ -1,20 +1,25 @@
+
+
 from dataset import PostData, ToTensor, Log, random_split
-from models import LR, LLR
+from models import LR, LLR, Bert
+from evaluator import ACCURACY
 
 import torch
-torch.manual_seed(666)
+import atexit
 from torch.utils.data import DataLoader
+torch.manual_seed(666)
 import argparse
 import logging
 from tqdm import tqdm, trange
 import time
-import atexit
 import numpy as np
 import re
 
+from sklearn.model_selection import train_test_split
+
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', choices=['LR', 'LLR'], help="MTL model", required=True)
+parser.add_argument('--model', choices=['LR', 'LLR', 'Bert'], default='Bert', help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', type=str, default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
@@ -23,6 +28,7 @@ parser.add_argument('--batch', type=int, default=64, help="batch size for feedin
 parser.add_argument('--lr', type=float, default=1e-3, help="learning rate for training model", required=False)
 parser.add_argument('--optim', choices=['SGD', 'Adam'], default="Adam", help="optimizer for training model", required=False)
 parser.add_argument('--epoch', type=int, default=100, help="epoch number for training model", required=False)
+parser.add_argument('--dim', type=int, default=20, help="dimension for latent factors", required=False)
 parser.add_argument('--comment', type=str, help="additional comment for model", required=False)
 args = parser.parse_args()
 
@@ -32,7 +38,7 @@ logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format
 
 print("="*20 + "START PROGRAM" + "="*20)
 
-#1. Check device
+#1. Configure device
 if re.compile('(cuda|cuda:\d+)').match(args.device) and torch.cuda.is_available():
     device = torch.device(args.device)
 elif args.device == 'mps' and torch.backends.mps.is_available(): # type: ignore
@@ -43,12 +49,19 @@ print(f"Computing device: {device}")
 
 #2. Load data
 x_trans_list = [ToTensor()]
-y_trasn_list = [ToTensor(), Log()]
-data = PostData(onehot_cols=['sentiment'], tar_cols=['Item_Views', 'Item_Likes', 'Item_Comments'], \
-                x_transforms=x_trans_list, y_transforms=y_trasn_list)
-train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1]) #train:test = 8:2
+y_trasn_list = [ToTensor()] #, Log()
+if args.model=='Bert':
+    data = PostData(cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'],\
+                    num_cols=['item_views', 'item_comment_counts', 'article_likes'],\
+                    tar_cols=['viral'],\
+                    x_transforms=x_trans_list,\
+                    y_transforms=y_trasn_list)
+else:
+    data = None #LR to be replaced
+train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1]) #train:valid:test = 8:1:1
 # print(train_data[10])
 # exit()
+
 train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
 valid_dataloader = DataLoader(valid_data, batch_size=len(valid_data), shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=len(test_data), shuffle=True)
@@ -57,15 +70,19 @@ print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_da
 
 #3. Select model
 if args.model_path:
-    model = LR(data.get_feature_num(), 3)
+    model = LR(data.get_feature_num(), data.get_task_num())
     model.load_state_dict(torch.load(f"./models/{args.model_path}.pt"))
     model.to(device)
 if args.model == 'LR':
-    model = LR(data.get_feature_num(), 3).to(device)
+    model = LR(data.get_feature_num(), data.get_task_num()).to(device)
 elif args.model == 'LLR':
-    model = LLR(data.get_feature_num(), 3).to(device)
-else: # default is LR
-    model = LR(data.get_feature_num(), 3).to(device)
+    model = LLR(data.get_feature_num(), data.get_task_num()).to(device)
+else: # default is Bert
+    # count cat unique count for embedding: ['stock_code', 'item_author', 'article_author', 'article_source']
+    cat_unique_count = data.get_embed_feature_unique_count()
+    embed_feature_count = data.get_embed_feature_count()
+    num_feature_count = data.get_num_feature_count()
+    model = Bert(args.dim, cat_unique_count, embed_feature_count, num_feature_count).to(device)
 print(f"Model loaded: {args.model}")
 
 # save model before exit
@@ -82,7 +99,7 @@ else: # default adam
 
 ### Test Mode
 if args.mode=="test":
-    print("-"*10 + "Start evaluating " + "-"*10)
+    print("-"*10 + "Start testing" + "-"*10)
     time_s = time.time()
     
     test_loss, metrics = model.eval(test_dataloader, device)
@@ -97,7 +114,7 @@ if args.mode=="test":
 
 ### Train Mode
 else: 
-    print("-"*10 + "Start training " + "-"*10)
+    print("-"*10 + "Start training" + "-"*10)
 
     # paramters for early stop
     best_loss = np.inf
@@ -116,7 +133,7 @@ else:
         
         t_batch = tqdm(train_dataloader, leave=False)
         batch_loss = 0
-        for batch, (x, y) in enumerate(t_batch):
+        for batch, (text_input, non_text_input, y) in enumerate(t_batch):
             # print(x[10])
             if batch%10 == 0:
                 t_batch.set_description(f"Batch {batch} - avg loss {batch_loss}")
@@ -124,13 +141,12 @@ else:
                 # logging.info(f"Batch {batch} - avg loss {batch_loss}\n")
 
             #load data to device
-            x = x.to(device)
-            y = y.to(device)
+            # x = x.to(device)
+            # y = y.to(device)
 
-            pred = model(x)
-            # print(x.shape,y.shape, pred.shape) [256, 9] [256, 3] [256, 3] 
-            
-            batch_loss = model.compute_loss(pred, y)
+            pred = model(text_input, non_text_input)
+
+            batch_loss = model.compute_loss(pred, y.squeeze().to(torch.long))
             epoch_loss += batch_loss
             
 

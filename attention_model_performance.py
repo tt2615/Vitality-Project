@@ -50,7 +50,7 @@ logging.debug(configuration)
 model = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
 criterion = torch.nn.CrossEntropyLoss()
 
-# Tokenize the input text and convert it to PyTorch tensors
+
 tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
 input_ids = []
 attention_masks = []
@@ -77,7 +77,7 @@ epochs = 5
 learning_rate = 1e-6
 
 # Train the model
-if mode == 'test':
+if mode == 'train':
 
     # Load the pre-trained tokenizer and model
     model.to(device)
