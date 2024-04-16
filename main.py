@@ -86,7 +86,7 @@ elif args.model == 'Bert': # default is Bert
     cat_unique_count = data.get_embed_feature_unique_count()
     embed_feature_count = data.get_embed_feature_count()
     num_feature_count = data.get_num_feature_count()
-    model = Bert(args.dim, cat_unique_count, embed_feature_count, num_feature_count).to(device)
+    model = Bert(args.dim, cat_unique_count, embed_feature_count, num_feature_count,device).to(device)
 elif args.model == 'BertAtt':
     cat_unique_count = data.get_embed_feature_unique_count()
     embed_feature_count = data.get_embed_feature_count()
@@ -94,7 +94,8 @@ elif args.model == 'BertAtt':
     model = BertAtt(dim=args.dim, 
                     cat_unique_count=cat_unique_count, 
                     embed_cols_count=embed_feature_count, 
-                    num_cols_count=num_feature_count).to(device)
+                    num_cols_count=num_feature_count,
+                    device=device).to(device)
 else:
     print('None existing model!')
     exit()
@@ -161,13 +162,20 @@ else:
                 # logging.info(f"Batch {batch} - avg loss {batch_loss}\n")
 
             #load data to device
-            # x = x.to(device)
-            # y = y.to(device)
+            text_input = text_input.to(device)
+            non_text_input = non_text_input.to(device)
+            y = y.squeeze().to(torch.long).to(device)
+
+            # print('-----')
+            # print(text_input.get_device())
+            # print(non_text_input.get_device())
+            # print(y.get_device())
+            # print(next(model.parameters()).device)
 
             output = model(text_input, non_text_input)
             pred = output[0]
 
-            batch_loss = model.compute_loss(pred, y.squeeze().to(torch.long))
+            batch_loss = model.compute_loss(pred, y)
             epoch_loss += batch_loss
             
 

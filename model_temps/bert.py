@@ -9,12 +9,13 @@ from evaluator import R2_SCORE, ADJUST_R2, ACCURACY, RECALL, PRECISION, F1
 import pandas as pd
 
 class Bert(nn.Module):
-    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count):
+    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device):
         super(Bert, self).__init__()
         # define parameters
         self.dim = dim
         self.embed_cols_count = embed_cols_count
         self.num_cols_count = num_cols_count
+        self.device = device
 
         ## text input module
         # configuration = BertConfig.from_pretrained('bert-base-chinese', output_hidden_states=True, output_attentions=True)
@@ -66,7 +67,7 @@ class Bert(nn.Module):
         # print(num_rep.shape)
 
         #cat representation
-        cat_reps = torch.zeros((non_text_input.shape[0],self.dim))
+        cat_reps = torch.zeros((non_text_input.shape[0],self.dim)).to(self.device)
         for i in range(self.embed_cols_count):
             single_embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i])
             cat_reps += single_embed_rep
