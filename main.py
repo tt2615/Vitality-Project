@@ -1,12 +1,14 @@
 
 
-from dataset import PostData, ToTensor, Log, random_split
-from models import LR, LLR, Bert
-from evaluator import ACCURACY
+from dataset import PostData, ToTensor#, Log, random_split
+from model_temps.lr import LR
+from model_temps.llr import LLR
+from model_temps.bert import Bert
+from model_temps.bertatt import BertAtt
 
 import torch
 import atexit
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 torch.manual_seed(666)
 import argparse
 import logging
@@ -15,11 +17,10 @@ import time
 import numpy as np
 import re
 
-from sklearn.model_selection import train_test_split
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', choices=['LR', 'LLR', 'Bert'], default='Bert', help="MTL model", required=True)
+parser.add_argument('--model', choices=['LR', 'LLR', 'Bert', 'BertAtt'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', type=str, default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
@@ -31,6 +32,7 @@ parser.add_argument('--epoch', type=int, default=100, help="epoch number for tra
 parser.add_argument('--dim', type=int, default=20, help="dimension for latent factors", required=False)
 parser.add_argument('--comment', type=str, help="additional comment for model", required=False)
 parser.add_argument('--percent', type=int, default=5, help="mark top percentage as viral", required=False)
+parser.add_argument('--pad_len', type=int, default=32, help="maximum padding length for a sentence", required=False)
 args = parser.parse_args()
 
 #Configure logging
@@ -51,10 +53,11 @@ print(f"Computing device: {device}")
 #2. Load data
 x_trans_list = [ToTensor()]
 y_trasn_list = [ToTensor()] #, Log()
-if args.model=='Bert':
+if args.model=='Bert' or args.model=='BertAtt':
     data = PostData(cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'],\
                     num_cols=['item_views', 'item_comment_counts', 'article_likes'],\
                     tar_cols=['viral'],\
+                    max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,\
                     y_transforms=y_trasn_list)
 else:
@@ -64,7 +67,7 @@ train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1]) #train:val
 # exit()
 
 train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
-valid_dataloader = DataLoader(valid_data, batch_size=len(valid_data), shuffle=True) #
+valid_dataloader = DataLoader(valid_data, batch_size=len(valid_data), shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=len(test_data), shuffle=True)
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
 
@@ -78,12 +81,23 @@ if args.model == 'LR':
     model = LR(data.get_feature_num(), data.get_task_num()).to(device)
 elif args.model == 'LLR':
     model = LLR(data.get_feature_num(), data.get_task_num()).to(device)
-else: # default is Bert
+elif args.model == 'Bert': # default is Bert
     # count cat unique count for embedding: ['stock_code', 'item_author', 'article_author', 'article_source']
     cat_unique_count = data.get_embed_feature_unique_count()
     embed_feature_count = data.get_embed_feature_count()
     num_feature_count = data.get_num_feature_count()
     model = Bert(args.dim, cat_unique_count, embed_feature_count, num_feature_count).to(device)
+elif args.model == 'BertAtt':
+    cat_unique_count = data.get_embed_feature_unique_count()
+    embed_feature_count = data.get_embed_feature_count()
+    num_feature_count = data.get_num_feature_count()
+    model = BertAtt(dim=args.dim, 
+                    cat_unique_count=cat_unique_count, 
+                    embed_cols_count=embed_feature_count, 
+                    num_cols_count=num_feature_count).to(device)
+else:
+    print('None existing model!')
+    exit()
 print(f"Model loaded: {args.model}")
 
 # save model before exit
@@ -105,7 +119,10 @@ if args.mode=="test":
     print("-"*10 + "Start testing" + "-"*10)
     time_s = time.time()
     
-    test_loss, metrics = model.eval(test_dataloader, device)
+    test_loss, metrics, report = model.eval(test_dataloader, device, explain=True)
+
+    if report is not None:
+            report.to_csv(f"./analysis/test_{args.model}_{args.batch}_{args.lr}_{args.optim}_{args.comment}.csv")
 
     # print result
     print(f"AVG TEST LOSS: {test_loss}")
@@ -147,7 +164,8 @@ else:
             # x = x.to(device)
             # y = y.to(device)
 
-            pred = model(text_input, non_text_input)
+            output = model(text_input, non_text_input)
+            pred = output[0]
 
             batch_loss = model.compute_loss(pred, y.squeeze().to(torch.long))
             epoch_loss += batch_loss
@@ -163,11 +181,14 @@ else:
 
         # eavluate on test data
         train_loss = epoch_loss/len(train_dataloader)
-        valid_loss, metrics = model.eval(valid_dataloader, device)
+        valid_loss, metrics, report = model.eval(valid_dataloader, device, explain=True)
         logging.debug(f"train loss: {train_loss}\n")
         logging.debug(f"valid loss: {valid_loss}\n")
         logging.debug(f"metrics performance: {metrics}\n")
         logging.debug('-'*10+'\n')
+
+        if report is not None:
+            report.to_csv(f"./analysis/valid_{args.model}_{args.batch}_{args.lr}_{args.optim}_{args.comment}_epoch{epoch}.csv")
 
         # early stop
         # Check for early stopping

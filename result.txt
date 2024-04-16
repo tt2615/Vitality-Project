@@ -1,0 +1,104 @@
+DEBUG - Starting new HTTPS connection (1): huggingface.co:443
+DEBUG - https://huggingface.co:443 "HEAD /bert-base-chinese/resolve/main/tokenizer_config.json HTTP/1.1" 200 0
+DEBUG - https://huggingface.co:443 "HEAD /bert-base-chinese/resolve/main/config.json HTTP/1.1" 200 0
+DEBUG - https://huggingface.co:443 "HEAD /bert-base-chinese/resolve/main/config.json HTTP/1.1" 200 0
+DEBUG - EPOCH 0
+
+DEBUG - train loss: 0.328468918800354
+
+DEBUG - valid loss: 0.00233946880325675
+
+DEBUG - metrics performance: {'ACCURACY': tensor([0.9992])}
+
+DEBUG - ----------
+
+DEBUG - EPOCH 1
+
+DEBUG - train loss: 0.05401870608329773
+
+DEBUG - valid loss: 0.0005675419233739376
+
+DEBUG - metrics performance: {'ACCURACY': tensor([0.9998])}
+
+DEBUG - ----------
+
+DEBUG - EPOCH 2
+
+DEBUG - train loss: 0.035995643585920334
+
+DEBUG - valid loss: 0.00019749040075112134
+
+DEBUG - metrics performance: {'ACCURACY': tensor([0.9998])}
+
+DEBUG - ----------
+
+DEBUG - EPOCH 3
+
+DEBUG - train loss: 0.06086186319589615
+
+DEBUG - valid loss: 0.021422430872917175
+
+DEBUG - metrics performance: {'ACCURACY': tensor([0.9986])}
+
+DEBUG - ----------
+
+DEBUG - EPOCH 4
+
+DEBUG - train loss: 0.04811927303671837
+
+DEBUG - valid loss: 0.3232775926589966
+
+DEBUG - metrics performance: {'ACCURACY': tensor([0.9955])}
+
+DEBUG - ----------
+
+----------Start training----------
+Epoch 0 - avg loss: 0.0:   0%|                                                                                                  | 0/100 [00:00<?, ?it/s              
+               precision    recall  f1-score   support                                                                                                    
+
+         0.0       1.00      1.00      1.00      6360
+         1.0       1.00      0.88      0.93        40
+
+    accuracy                           1.00      6400
+   macro avg       1.00      0.94      0.97      6400
+weighted avg       1.00      1.00      1.00      6400
+
+Epoch 1 - avg loss: 0.328468918800354:   1%|▋                                                                      | 1/100 [41:35<68:37:54, 2495.70s/it              
+               precision    recall  f1-score   support                                                                                                    
+
+         0.0       1.00      1.00      1.00      6360
+         1.0       0.98      1.00      0.99        40
+
+    accuracy                           1.00      6400
+   macro avg       0.99      1.00      0.99      6400
+weighted avg       1.00      1.00      1.00      6400
+
+Epoch 2 - avg loss: 0.05401870608329773:   2%|█▎                                                                 | 2/100 [1:20:05<64:57:56, 2386.50s/it              
+               precision    recall  f1-score   support                                                                                                    
+
+         0.0       1.00      1.00      1.00      6360
+         1.0       1.00      0.97      0.99        40
+
+    accuracy                           1.00      6400
+   macro avg       1.00      0.99      0.99      6400
+weighted avg       1.00      1.00      1.00      6400
+
+Epoch 3 - avg loss: 0.035995643585920334:   3%|█▉                                                                | 3/100 [1:49:34<56:41:53, 2104.27s/it              
+               precision    recall  f1-score   support                                                                                                    
+
+         0.0       1.00      1.00      1.00      6360
+         1.0       0.82      1.00      0.90        40
+
+    accuracy                           1.00      6400
+   macro avg       0.91      1.00      0.95      6400
+weighted avg       1.00      1.00      1.00      6400
+
+Epoch 4 - avg loss: 0.06086186319589615:   4%|██▋                                                                | 4/100 [2:19:20<52:45:53, 1978.68s/it              ]
+               precision    recall  f1-score   support                                                                                                    
+
+         0.0       1.00      1.00      1.00      6360
+         1.0       0.58      1.00      0.73        40
+
+    accuracy                           1.00      6400
+   macro avg       0.79      1.00      0.87      6400
+weighted avg       1.00      1.00      1.00      6400

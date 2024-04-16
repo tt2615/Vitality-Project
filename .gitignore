@@ -139,3 +139,4 @@ sentiment_analysis.ipynb
 data/
 *.out
 att_results/
+analysis/
