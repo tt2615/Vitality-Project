@@ -54,8 +54,8 @@ print(f"Computing device: {device}")
 x_trans_list = [ToTensor()]
 y_trasn_list = [ToTensor()] #, Log()
 if args.model=='Bert' or args.model=='BertAtt':
-    data = PostData(cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'],\
-                    num_cols=['item_views', 'item_comment_counts', 'article_likes'],\
+    data = PostData(cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'month', 'year'],\
+                    num_cols=[],\
                     tar_cols=['viral'],\
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,\
