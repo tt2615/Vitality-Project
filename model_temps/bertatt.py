@@ -29,7 +29,7 @@ class Attention(nn.Module):
     
 
 class BertAtt(nn.Module):
-    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device):
+    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device, bert='bert-base-chinese'):
         super(BertAtt, self).__init__()
         # define parameters
         self.dim = dim
@@ -43,7 +43,7 @@ class BertAtt(nn.Module):
         # configuration.attention_probs_dropout_prob = 0.8
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
         # tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-        self.title_bert = BertModel.from_pretrained('bert-base-chinese', 
+        self.title_bert = BertModel.from_pretrained(bert, 
                                                     output_attentions=True)
         self.bert_linear = nn.Linear(768, dim, bias=True)
         

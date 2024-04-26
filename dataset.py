@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from transformers import BertTokenizer
 
 class PostData(Dataset):
-    def __init__(self, cat_cols=[], num_cols=[], tar_cols=[], max_padding_len=32, dir="./data/p_data_wo_content.csv", x_transforms=None, y_transforms=None):
+    def __init__(self, cat_cols=[], num_cols=[], tar_cols=[], max_padding_len=32, dir="./data/p_data_wo_content.csv", x_transforms=None, y_transforms=None, bert='bert-base-chinese'):
 
         #load data
         self.data = pd.read_csv(dir,index_col=0, nrows=64000)
@@ -16,7 +16,7 @@ class PostData(Dataset):
 
         # #register data
         # self.text_cols = ['item_title']
-        # self.cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source','month', `'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism']
+        # self.cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism']
         # self.embed_cols = ['stock_index', 'iauthor_index', 'aauthor_index', 'source_index']
 
         # #generate onehot encoding
@@ -30,7 +30,7 @@ class PostData(Dataset):
             self.embed_cols.append(f'{cat_col}_index')
 
         # process text data: for bert input 
-        tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+        tokenizer = BertTokenizer.from_pretrained(bert)
         input_ids = []
         attention_masks = []
         for text in self.data['item_title']:

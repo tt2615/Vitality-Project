@@ -33,6 +33,7 @@ parser.add_argument('--dim', type=int, default=20, help="dimension for latent fa
 parser.add_argument('--comment', type=str, help="additional comment for model", required=False)
 parser.add_argument('--percent', type=int, default=5, help="mark top percentage as viral", required=False)
 parser.add_argument('--pad_len', type=int, default=32, help="maximum padding length for a sentence", required=False)
+parser.add_argument('--bert', type=str, default='Langboat/mengzi-bert-base-fin', choices=['bert-base-chinese','Langboat/mengzi-bert-base-fin'], help="version of bert", required=False)
 args = parser.parse_args()
 
 #Configure logging
@@ -54,12 +55,13 @@ print(f"Computing device: {device}")
 x_trans_list = [ToTensor()]
 y_trasn_list = [ToTensor()] #, Log()
 if args.model=='Bert' or args.model=='BertAtt':
-    data = PostData(cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'month', 'year'],\
+    data = PostData(cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'],\
                     num_cols=[],\
                     tar_cols=['viral'],\
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,\
-                    y_transforms=y_trasn_list)
+                    y_transforms=y_trasn_list,
+                    bert = args.bert)
 else:
     data = None #LR to be replaced
 train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1]) #train:valid:test = 8:1:1
@@ -86,7 +88,7 @@ elif args.model == 'Bert': # default is Bert
     cat_unique_count = data.get_embed_feature_unique_count()
     embed_feature_count = data.get_embed_feature_count()
     num_feature_count = data.get_num_feature_count()
-    model = Bert(args.dim, cat_unique_count, embed_feature_count, num_feature_count,device).to(device)
+    model = Bert(args.dim, cat_unique_count, embed_feature_count, num_feature_count,device,args.bert).to(device)
 elif args.model == 'BertAtt':
     cat_unique_count = data.get_embed_feature_unique_count()
     embed_feature_count = data.get_embed_feature_count()
@@ -95,7 +97,8 @@ elif args.model == 'BertAtt':
                     cat_unique_count=cat_unique_count, 
                     embed_cols_count=embed_feature_count, 
                     num_cols_count=num_feature_count,
-                    device=device).to(device)
+                    device=device,
+                    bert=args.bert).to(device)
 else:
     print('None existing model!')
     exit()
