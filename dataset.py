@@ -11,7 +11,7 @@ class PostData(Dataset):
     def __init__(self, cat_cols=[], num_cols=[], tar_cols=[], max_padding_len=32, dir="./data/processed_data_wo_content.csv", x_transforms=None, y_transforms=None):
 
         #load data
-        self.data = pd.read_csv(dir,index_col=0, nrows=64)
+        self.data = pd.read_csv(dir,index_col=0) #
         # print(self.data.dtypes)
 
         # #register data

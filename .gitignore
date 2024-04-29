@@ -140,3 +140,6 @@ data/
 *.out
 att_results/
 analysis/
+
+Pipfile
+Pipifile.lock
