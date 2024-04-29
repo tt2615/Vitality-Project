@@ -5,6 +5,14 @@ name = "pypi"
 
 [packages]
 jupyterlab = "*"
+<<<<<<< HEAD
+sklearn = "*"
+pyldavis = "*"
+plotly = "*"
+matplotlib = "*"
+seaborn = "*"
+=======
+>>>>>>> 7db95fa7336e604a7ce02d3fe247221ed22afb38
 tqdm = "*"
 transformers = "*"
 scikit-learn = "*"
