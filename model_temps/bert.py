@@ -9,7 +9,7 @@ from evaluator import R2_SCORE, ADJUST_R2, ACCURACY, RECALL, PRECISION, F1
 import pandas as pd
 
 class Bert(nn.Module):
-    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device):
+    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device, bert='bert-base-chinese'):
         super(Bert, self).__init__()
         # define parameters
         self.dim = dim
@@ -23,17 +23,19 @@ class Bert(nn.Module):
         # configuration.attention_probs_dropout_prob = 0.8
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
         # tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-        self.title_bert = BertModel.from_pretrained('bert-base-chinese')
+        self.title_bert = BertModel.from_pretrained(bert)
         self.bert_linear = nn.Linear(768, dim, bias=True)
         
 
         ## cat input embedding module #'stock_code', 'item_author', 'article_author', 'article_source'\
-        self.embedding_layer = []
+        self.embedding_layer = nn.ModuleList()
         for i in range(embed_cols_count):
             self.embedding_layer.append(nn.Embedding(cat_unique_count[i], dim))
 
         ## num input network module #'item_views', 'item_comment_counts', 'article_likes', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'
         self.num_feature_network = nn.Linear(num_cols_count, dim, bias=True)
+
+        self.classifier = nn.Linear(2*dim, 2)
 
         self.loss_fn = nn.CrossEntropyLoss()
 
@@ -45,35 +47,36 @@ class Bert(nn.Module):
         title_output = self.title_bert(text_input[:,0,:], attention_mask=text_input[:,1,:]) #batch*768
         text_rep = self.bert_linear(title_output.pooler_output) #batch*dim
 
-        title_att_score = torch.sum(title_output.attentions[-1],dim=1) #batch*len*len
-        title_att_score = torch.sum(title_att_score,dim=1) #batch*len
+        # title_att_score = torch.sum(title_output.attentions[-1],dim=1) #batch*len*len
+        # title_att_score = torch.sum(title_att_score,dim=1) #batch*len
+        title_att_score=0
         
         """
         Non-text-input:
-        item_views                   num
-        item_comment_counts          num
-        article_likes                num
-        eastmoney_robo_journalism    cat
-        media_robo_journalism        cat
-        SMA_robo_journalism          cat
-        stock_code_index             cat
-        item_author_index            cat
-        article_author_index         cat
-        article_source_index         cat
+            stock_code_index                    44
+            item_author_index                   38
+            article_author_index                 0
+            article_source_index               327
+            month_index                          8
+            year_index                           2
+            eastmoney_robo_journalism_index      1
+            media_robo_journalism_index          1
+            SMA_robo_journalism_index                 
         """
 
         #num representation
-        num_rep = self.num_feature_network(non_text_input[:,:self.num_cols_count].to(torch.float32)) #batch*dim
+        # num_rep = self.num_feature_network(non_text_input[:,:self.num_cols_count].to(torch.float32)) #batch*dim
         # print(num_rep.shape)
 
         #cat representation
         cat_reps = torch.zeros((non_text_input.shape[0],self.dim)).to(self.device)
         for i in range(self.embed_cols_count):
-            single_embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i])
+            single_embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int))
             cat_reps += single_embed_rep
         cat_rep = cat_reps/self.embed_cols_count #batch*dim
 
-        final_rep = torch.cat((text_rep, num_rep, cat_rep), dim=1) #batch*3dim
+        # final_rep = torch.cat((text_rep, num_rep, cat_rep), dim=1) #batch*3dim
+        final_rep = torch.cat((text_rep, cat_rep), dim=1)
 
         logits = self.classifier(final_rep) #batch*2
         return logits, title_att_score

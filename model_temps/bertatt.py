@@ -81,38 +81,40 @@ class BertAtt(nn.Module):
         title_att_score = torch.sum(title_output.attentions[-1],dim=1) #batch*len*len
         title_att_score = torch.sum(title_att_score,dim=1) #batch*len
         # print(title_att_score.shape)
-
+        
+        # print(non_text_input)
         """
         Non-text-input:
-            stock_code_index                   
-            item_author_index                  
-            article_author_index               
-            article_source_index               
-            eastmoney_robo_journalism_index    
-            media_robo_journalism_index        
-            SMA_robo_journalism_index          
-            month_index                        
-            year_index                         
+            stock_code_index                    44
+            item_author_index                   38
+            article_author_index                 0
+            article_source_index               327
+            month_index                          8
+            year_index                           2
+            eastmoney_robo_journalism_index      1
+            media_robo_journalism_index          1
+            SMA_robo_journalism_index                 
         """
 
-        #num representation
-        num_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
-        for i in range(self.num_cols_count):
-            # self.network_layer[i].to(self.device)
-            num_rep = self.network_layer[i](non_text_input[:,i].unsqueeze(1).to(torch.float)) #batch*dim  
-            num_reps = torch.cat((num_reps, num_rep.unsqueeze(1)),dim=1)
-        num_reps = num_reps[:,1:,:] #batch*3*dim
-        # print(num_reps.shape)
+        # #num representation
+        # num_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
+        # for i in range(self.num_cols_count):
+        #     # self.network_layer[i].to(self.device)
+        #     num_rep = self.network_layer[i](non_text_input[:,i].unsqueeze(1).to(torch.float)) #batch*dim  
+        #     num_reps = torch.cat((num_reps, num_rep.unsqueeze(1)),dim=1)
+        # num_reps = num_reps[:,1:,:] #batch*3*dim
+        # # print(num_reps.shape)
 
         #cat representation
         cat_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
         for i in range(self.embed_cols_count):
             embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
             cat_reps = torch.cat((cat_reps, embed_rep.unsqueeze(1)),dim=1)
-        cat_reps = cat_reps[:,1:,:] #batch*7*dim
+        cat_reps = cat_reps[:,1:,:] #batch*9*dim
         # print(cat_reps.shape)
 
-        final_rep = torch.cat((text_rep, num_reps, cat_reps), dim=1) #batch*11*dim
+        # final_rep = torch.cat((text_rep, num_reps, cat_reps), dim=1) #batch*11*dim
+        final_rep = torch.cat((text_rep, cat_reps), dim=1) #batch*10*dim
         # print(final_rep.shape)
 
         attentioned_rep, feature_att_score = self.attention_module(final_rep, text_rep) #batch*1*dim
@@ -194,7 +196,7 @@ class BertAtt(nn.Module):
 
             #generate analysis report
             if explain and len(text)>0:
-                feature_list = ['text', 'item_views', 'item_comment_counts', 'article_likes', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'stock_code_index', 'item_author_index', 'article_author_index', 'article_source_index']
+                feature_list = ['text', 'stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', ]
                 report = pd.DataFrame({
                     'text': text,
                     'pred': pos_preds,

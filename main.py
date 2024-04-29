@@ -40,7 +40,7 @@ parser.add_argument('--bert', type=str, default='Langboat/mengzi-bert-base-fin',
 args = parser.parse_args()
 
 #Configure logging
-LOG_PATH = (f"./logs/{args.model}_{args.batch}_{args.lr}_{args.optim}_{args.comment}.log")
+LOG_PATH = (f"./logs/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.log")
 logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(levelname)s - %(message)s')
 
 print("="*20 + "START PROGRAM" + "="*20)
@@ -67,13 +67,16 @@ if args.model=='Bert' or args.model=='BertAtt':
                     bert = args.bert)
 else:
     data = None #LR to be replaced
-train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1]) #train:valid:test = 8:1:1
+
+gen = torch.Generator()
+gen.manual_seed(666)
+train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1], generator=gen) #train:valid:test = 8:1:1
 # print(train_data[10])
 # exit()
 
 train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
 valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
-test_dataloader = DataLoader(test_data, batch_size=args.batchy_pos_index.numpy(), shuffle=True)
+test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
 
 
@@ -109,7 +112,7 @@ print(f"Model loaded: {args.model}")
 
 # save model before exit
 def exit_handler():
-    MODEL_PATH = (f"./models/{args.model}_{args.batch}_{args.lr}_{args.optim}_{args.comment}.pt")
+    MODEL_PATH = (f"./models/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.pt")
     torch.save(model.state_dict(), MODEL_PATH)
 atexit.register(exit_handler)
 
@@ -129,7 +132,7 @@ if args.mode=="test":
     test_loss, metrics, report = model.eval(test_dataloader, device, explain=True)
 
     if report is not None:
-            report.to_csv(f"./analysis/test_{args.model}_{args.batch}_{args.lr}_{args.optim}_{args.comment}.csv")
+            report.to_csv(f"./analysis/test_{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.csv")
 
     # print result
     print(f"AVG TEST LOSS: {test_loss}")
@@ -182,6 +185,8 @@ else:
             pred = output[0]
 
             batch_loss = model.compute_loss(pred, y)
+            # if batch_loss > 0.1: #check if prediction on gt is bad
+            #     print(batch_loss, pred.max(1).indices-y)
             epoch_loss += batch_loss
             
 
@@ -202,7 +207,7 @@ else:
         logging.debug('-'*10+'\n')
 
         if report is not None:
-            report.to_csv(f"./analysis/valid_{args.model}_{args.batch}_{args.lr}_{args.optim}_{args.comment}_epoch{epoch}.csv")
+            report.to_csv(f"./analysis/valid_{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}_epoch{epoch}.csv")
 
         # early stop
         # Check for early stopping
