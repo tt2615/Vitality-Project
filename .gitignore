@@ -132,6 +132,7 @@ dmypy.json
 data/000001_平安银行.csv
 data/news_data_with_y.csv
 data/stopwords/
+Pipfile
 Pipfile.lock
 .vscode/
 *.pt
@@ -141,5 +142,4 @@ data/
 att_results/
 analysis/
 
-Pipfile
-Pipifile.lock
+.DS_store

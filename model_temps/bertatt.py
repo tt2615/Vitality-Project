@@ -29,7 +29,7 @@ class Attention(nn.Module):
     
 
 class BertAtt(nn.Module):
-    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device):
+    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device, bert='bert-base-chinese'):
         super(BertAtt, self).__init__()
         # define parameters
         self.dim = dim
@@ -43,17 +43,17 @@ class BertAtt(nn.Module):
         # configuration.attention_probs_dropout_prob = 0.8
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
         # tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-        self.title_bert = BertModel.from_pretrained('bert-base-chinese', 
+        self.title_bert = BertModel.from_pretrained(bert, 
                                                     output_attentions=True)
         self.bert_linear = nn.Linear(768, dim, bias=True)
         
 
-        ## cat input embedding module #'stock_code', 'item_author', 'article_author', 'article_source'\
+        ## cat input embedding module #'stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'\
         self.embedding_layer = nn.ModuleList()
         for i in range(embed_cols_count):
             self.embedding_layer.append(nn.Embedding(cat_unique_count[i], dim))
 
-        ## num input network module #'item_views', 'item_comment_counts', 'article_likes', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'
+        ## num input network module #'item_views', 'item_comment_counts', 'article_likes',
         self.network_layer = nn.ModuleList()
         for i in range(num_cols_count):
             self.network_layer.append(nn.Linear(1, dim, bias=True))
@@ -69,6 +69,7 @@ class BertAtt(nn.Module):
         self.evaluators = [ACCURACY()] #RECALL(),PRECISION(),F1()
 
     def forward(self, text_input, non_text_input):
+
         #text representation
         title_output = self.title_bert(text_input[:,0,:], attention_mask=text_input[:,1,:]) #batch*768
         text_rep = title_output.pooler_output #batch*768
@@ -83,16 +84,15 @@ class BertAtt(nn.Module):
 
         """
         Non-text-input:
-        item_views                   num
-        item_comment_counts          num
-        article_likes                num
-        eastmoney_robo_journalism    cat
-        media_robo_journalism        cat
-        SMA_robo_journalism          cat
-        stock_code_index             cat
-        item_author_index            cat
-        article_author_index         cat
-        article_source_index         cat
+            stock_code_index                   
+            item_author_index                  
+            article_author_index               
+            article_source_index               
+            eastmoney_robo_journalism_index    
+            media_robo_journalism_index        
+            SMA_robo_journalism_index          
+            month_index                        
+            year_index                         
         """
 
         #num representation
@@ -107,7 +107,7 @@ class BertAtt(nn.Module):
         #cat representation
         cat_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
         for i in range(self.embed_cols_count):
-            embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i]) #batch*dim
+            embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
             cat_reps = torch.cat((cat_reps, embed_rep.unsqueeze(1)),dim=1)
         cat_reps = cat_reps[:,1:,:] #batch*7*dim
         # print(cat_reps.shape)
