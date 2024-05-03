@@ -23,7 +23,7 @@ class Bert(nn.Module):
         # configuration.attention_probs_dropout_prob = 0.8
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
         # tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-        self.title_bert = BertModel.from_pretrained(bert)
+        self.title_bert = BertModel.from_pretrained(bert, output_attentions=True)
         self.bert_linear = nn.Linear(768, dim, bias=True)
         
 
@@ -46,10 +46,11 @@ class Bert(nn.Module):
         #text representation
         title_output = self.title_bert(text_input[:,0,:], attention_mask=text_input[:,1,:]) #batch*768
         text_rep = self.bert_linear(title_output.pooler_output) #batch*dim
+        # print(title_output)
 
-        # title_att_score = torch.sum(title_output.attentions[-1],dim=1) #batch*len*len
-        # title_att_score = torch.sum(title_att_score,dim=1) #batch*len
-        title_att_score=0
+        title_att_score = torch.sum(title_output.attentions[-1],dim=1) #batch*len*len
+        title_att_score = torch.sum(title_att_score,dim=1) #batch*len
+        # title_att_score=0
         
         """
         Non-text-input:
@@ -94,39 +95,67 @@ class Bert(nn.Module):
             metrics_vals = {type(k).__name__:torch.zeros(1).to(device) for k in self.evaluators}
 
             preds, ys = torch.tensor([]), torch.tensor([])
-            text, title_att_scores = [], torch.tensor([])
-            for text_input, non_text_input, y in eval_data:
-                y = y.squeeze().to(torch.long)
-                pred, title_att_score = self.forward(text_input, non_text_input)
-                eval_loss = self.compute_loss(pred, y)
-                ys = torch.cat((ys,y))
-                preds = torch.cat((preds, pred.max(1).indices))
-                # print(ys, preds)
+            y_pos_len, pos_preds = 0, torch.tensor([])
+            text, pos_title_att_scores = [], torch.tensor([]).to(device)
+            for x, y in eval_data:
 
-                if explain: #record attention scores for analysis
-                    y_pos_index = (y==1).nonzero().squeeze()
-                    
-                    pos_title_att_score = title_att_score[y_pos_index]
-                    # print(pos_title_att_score)
-                    title_att_scores = torch.cat((title_att_scores, pos_title_att_score), axis=0).cpu().detach().numpy()
-                    # print(title_att_scores)
-
-                    pos_text_token = text_input[:,0,:].cpu().detach().numpy()
-                    tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-                    for token in pos_text_token:
-                        text.append(tokenizer.decode(token))
+                text_input, non_text_input = x
                 
+                text_input = text_input.to(device)
+                non_text_input = non_text_input.to(device)
+                y = y.squeeze().to(torch.long).to(device)
+
+                pred, title_att_score = self.forward(text_input, non_text_input)
+
+                eval_loss = self.compute_loss(pred, y)
+
+                ys = torch.cat((ys,y.cpu().detach()))
+                preds = torch.cat((preds, pred.cpu().detach().max(1).indices))
+                # print(ys, preds)
+                
+                if explain: #record attention scores for analysis
+                    y_pos_index = (y==1).nonzero().squeeze().cpu().detach()
+                    # print('---------')
+                    # print(y_pos_index)
+                    # print(len(y_pos_index.size()))
+                    if y_pos_index.nelement() > 0:
+                        y_pos_len += y_pos_index.nelement()
+                        # print(y_pos_index)
+                        # print(preds[y_pos_index])
+                        if y_pos_index.nelement()==1:
+                            y_pos_index = y_pos_index.unsqueeze(0)
+
+                        pos_preds = torch.cat((pos_preds, preds[y_pos_index]))
+                        # print(pos_preds)
+                        
+                        pos_title_att_score = title_att_score[y_pos_index]
+                        # print(pos_title_att_score)
+                        pos_title_att_scores = torch.cat((pos_title_att_scores, pos_title_att_score), 0)
+                        # print(pos_title_att_scores)
+
+                        pos_text_token = text_input[y_pos_index,0,:]
+                        tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+                        for token in pos_text_token:
+                            text.append(tokenizer.decode(token))
+                        # print(text)
+
             for e in self.evaluators:
                 metrics_vals[type(e).__name__] += e(ys, preds) #[1, task]
+
+            # print(y_pos_len)
+            # print(len(pos_preds))
+            # print(pos_title_att_scores.shape)
+            # print(len(text))
 
             #generate analysis report
             if explain and len(text)>0:
                 report = pd.DataFrame({
                     'text': text,
-                    'pred': preds,
-                    'title_attention': list(title_att_scores),
+                    'pred': pos_preds,
+                    'title_attention': list(pos_title_att_scores.cpu().detach().numpy()),
                 })
             else:
+                print('no positive data, no report generated')
                 report = None
 
             return eval_loss, metrics_vals, report

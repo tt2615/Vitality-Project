@@ -81,7 +81,7 @@ class PostData(Dataset):
         # print(non_text_input)
         # print(y)
         
-        return text_input, non_text_input, y
+        return (text_input, non_text_input), y
     
     def get_task_num(self):
         return len(self.tar_cols)
@@ -98,6 +98,9 @@ class PostData(Dataset):
     def get_pos_data(self):
         pos_data = self.data[self.data['viral']==1]
         return pos_data
+    
+    def get_class_count(self):
+        return self.data['viral'].value_counts()
     
 # Data transforms
 

@@ -43,8 +43,7 @@ class BertAtt(nn.Module):
         # configuration.attention_probs_dropout_prob = 0.8
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
         # tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-        self.title_bert = BertModel.from_pretrained(bert, 
-                                                    output_attentions=True)
+        self.title_bert = BertModel.from_pretrained(bert, output_attentions=True)
         self.bert_linear = nn.Linear(768, dim, bias=True)
         
 
@@ -140,7 +139,9 @@ class BertAtt(nn.Module):
             preds, ys = torch.tensor([]), torch.tensor([])
             y_pos_len, pos_preds = 0, torch.tensor([])
             text, pos_feature_att_scores, pos_title_att_scores = [], torch.tensor([]).to(device), torch.tensor([]).to(device)
-            for text_input, non_text_input, y in eval_data:
+            for x, y in eval_data:
+
+                text_input, non_text_input = x
                 
                 text_input = text_input.to(device)
                 non_text_input = non_text_input.to(device)

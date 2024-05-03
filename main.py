@@ -16,6 +16,7 @@ from tqdm import tqdm, trange
 import time
 import numpy as np
 import re
+import os
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -37,11 +38,14 @@ parser.add_argument('--comment', type=str, help="additional comment for model", 
 parser.add_argument('--percent', type=int, default=5, help="mark top percentage as viral", required=False)
 parser.add_argument('--pad_len', type=int, default=32, help="maximum padding length for a sentence", required=False)
 parser.add_argument('--bert', type=str, default='Langboat/mengzi-bert-base-fin', choices=['bert-base-chinese','Langboat/mengzi-bert-base-fin'], help="version of bert", required=False)
+parser.add_argument('--oversample', type=bool, default=False, help="whether oversample viral post", required=False)
 args = parser.parse_args()
 
 #Configure logging
 LOG_PATH = (f"./logs/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.log")
 logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(levelname)s - %(message)s')
+
+MODEL_PATH = (f"./models/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.pt")
 
 print("="*20 + "START PROGRAM" + "="*20)
 
@@ -71,10 +75,19 @@ else:
 gen = torch.Generator()
 gen.manual_seed(666)
 train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1], generator=gen) #train:valid:test = 8:1:1
-# print(train_data[10])
-# exit()
-
-train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
+# print(train_data[0][1])
+# exit()                                                                    
+                                                                                
+# For unbalanced dataset we create a weighted sampler
+if args.oversample:
+    class_weights = 1/data.get_class_count().values
+    # print(class_weights)#[1.57274743e-05 2.39808153e-03]
+    # class_weights = [0.005, 1]
+    weights = [class_weights[int(train_data[i][1].item())] for i in range(len(train_data))]
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights), replacement=True)
+    train_dataloader = DataLoader(train_data, batch_size=args.batch, sampler=sampler)
+else:
+    train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True) 
 valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
@@ -106,14 +119,14 @@ elif args.model == 'BertAtt':
                     device=device,
                     bert=args.bert).to(device)
 else:
-    print('None existing model!')
+    print('Invalid model choice!')
     exit()
-print(f"Model loaded: {args.model}")
+print(f"Model created: {args.model}")
 
 # save model before exit
 def exit_handler():
-    MODEL_PATH = (f"./models/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.pt")
     torch.save(model.state_dict(), MODEL_PATH)
+    print(f"save model to {MODEL_PATH}!")
 atexit.register(exit_handler)
 
 #4. Select optimizer
@@ -126,10 +139,17 @@ else: # default adam
 
 ### Test Mode
 if args.mode=="test":
+    if not os.path.isfile(MODEL_PATH):
+        print(f"Exit testing because no model found at {MODEL_PATH}!")
+    else:
+        # MODEL_PATH = './models/Bert_64_0.001_Adam_None.pt'
+        print(f"Model {MODEL_PATH} loaded for testing")
+        model.load_state_dict(torch.load(MODEL_PATH))
+
     print("-"*10 + "Start testing" + "-"*10)
     time_s = time.time()
     
-    test_loss, metrics, report = model.eval(test_dataloader, device, explain=True)
+    test_loss, metrics, report = model.eval(valid_dataloader, device, explain=True)
 
     if report is not None:
             report.to_csv(f"./analysis/test_{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.csv")
@@ -143,7 +163,7 @@ if args.mode=="test":
     print("="*10 + "END PROGRAM" + "="*10)
 
 ### Train Mode
-else: 
+elif args.mode=="train": 
     print("-"*10 + "Start training" + "-"*10)
 
     # paramters for early stop
@@ -163,8 +183,8 @@ else:
         
         t_batch = tqdm(train_dataloader, leave=False)
         batch_loss = 0
-        for batch, (text_input, non_text_input, y) in enumerate(t_batch):
-            # print(x[10])
+        for batch, (x, y) in enumerate(t_batch):
+            text_input, non_text_input = x
             if batch%10 == 0:
                 t_batch.set_description(f"Batch {batch} - avg loss {batch_loss}")
                 t_batch.refresh()
@@ -174,6 +194,7 @@ else:
             text_input = text_input.to(device)
             non_text_input = non_text_input.to(device)
             y = y.squeeze().to(torch.long).to(device)
+            # print(y)
 
             # print('-----')
             # print(text_input.get_device())
