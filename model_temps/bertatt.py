@@ -29,12 +29,13 @@ class Attention(nn.Module):
     
 
 class BertAtt(nn.Module):
-    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, device, bert='bert-base-chinese'):
+    def __init__(self, dim, cat_unique_count, embed_cols_count, num_cols_count, topic_num, device, bert='bert-base-chinese'):
         super(BertAtt, self).__init__()
         # define parameters
         self.dim = dim
         self.embed_cols_count = embed_cols_count
         self.num_cols_count = num_cols_count
+        self.topic_num = topic_num
         self.device = device
 
         ## text input module
@@ -56,6 +57,9 @@ class BertAtt(nn.Module):
         self.network_layer = nn.ModuleList()
         for i in range(num_cols_count):
             self.network_layer.append(nn.Linear(1, dim, bias=True))
+
+        self.topic_layer = nn.Linear(topic_num, dim, bias=True)
+        print(self.topic_layer.weight.dtype)
 
         self.attention_module = Attention(dim)
 
@@ -84,36 +88,65 @@ class BertAtt(nn.Module):
         # print(non_text_input)
         """
         Non-text-input:
-            stock_code_index                    44
-            item_author_index                   38
-            article_author_index                 0
-            article_source_index               327
-            month_index                          8
-            year_index                           2
-            eastmoney_robo_journalism_index      1
-            media_robo_journalism_index          1
-            SMA_robo_journalism_index                 
+            sentiment_score                    0.200904
+            stock_code_index                         52
+            item_author_cate_index                    2
+            article_author_index                      1
+            article_source_cate_index                 1
+            month_index                               5
+            year_index                                4
+            eastmoney_robo_journalism_index           1
+            media_robo_journalism_index               1
+            SMA_robo_journalism_index                 1
+            topics_val1                        0.012618
+            topics_val2                        0.012623
+            topics_val3                        0.012636
+            topics_val4                        0.214114
+            topics_val5                        0.225046
+            topics_val6                        0.012619
+            topics_val7                        0.122692
+            topics_val8                        0.387651    
         """
 
         # #num representation
-        # num_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
-        # for i in range(self.num_cols_count):
-        #     # self.network_layer[i].to(self.device)
-        #     num_rep = self.network_layer[i](non_text_input[:,i].unsqueeze(1).to(torch.float)) #batch*dim  
-        #     num_reps = torch.cat((num_reps, num_rep.unsqueeze(1)),dim=1)
-        # num_reps = num_reps[:,1:,:] #batch*3*dim
-        # # print(num_reps.shape)
+        if self.num_cols_count>0:
+            num_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
+            for i in range(self.num_cols_count):
+                # self.network_layer[i].to(self.device)
+                num_rep = self.network_layer[i](non_text_input[:,i].unsqueeze(1)) #batch*dim  
+                num_reps = torch.cat((num_reps, num_rep.unsqueeze(1)),dim=1)
+            num_reps = num_reps[:,1:,:] #batch*1*dim
+        else:
+            num_reps = None
 
         #cat representation
-        cat_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
-        for i in range(self.embed_cols_count):
-            embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
-            cat_reps = torch.cat((cat_reps, embed_rep.unsqueeze(1)),dim=1)
-        cat_reps = cat_reps[:,1:,:] #batch*9*dim
-        # print(cat_reps.shape)
+        if self.cat_cols_count>0:
+            cat_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
+            for i in range(self.embed_cols_count):
+                embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
+                cat_reps = torch.cat((cat_reps, embed_rep.unsqueeze(1)),dim=1)
+            cat_reps = cat_reps[:,1:,:] #batch*9*dim
+            # print(cat_reps.shape)
+        else:
+            cat_reps = None
 
-        # final_rep = torch.cat((text_rep, num_reps, cat_reps), dim=1) #batch*11*dim
-        final_rep = torch.cat((text_rep, cat_reps), dim=1) #batch*10*dim
+        #topic representation
+        if self.topic_num>0:
+            topic_rep = self.topic_layer(non_text_input[:,-self.topic_num:]).unsqueeze(1)
+            # print(topic_rep.shape)
+        else:
+            topic_rep = None
+
+        non_none_tensors = [] # Check if each tensor is not None, and if so, add it to the list
+        if text_rep is not None:
+            non_none_tensors.append(text_rep)
+        if num_reps is not None:
+            non_none_tensors.append(num_reps)
+        if cat_reps is not None:
+            non_none_tensors.append(cat_reps)
+        if topic_rep is not None:
+            non_none_tensors.append(topic_rep)
+        final_rep = torch.cat(non_none_tensors, dim=1) #batch*12*dim
         # print(final_rep.shape)
 
         attentioned_rep, feature_att_score = self.attention_module(final_rep, text_rep) #batch*1*dim
@@ -197,7 +230,7 @@ class BertAtt(nn.Module):
 
             #generate analysis report
             if explain and len(text)>0:
-                feature_list = ['text', 'stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', ]
+                feature_list = ['text', 'sentiment', 'stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic']
                 report = pd.DataFrame({
                     'text': text,
                     'pred': pos_preds,

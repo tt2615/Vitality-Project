@@ -1,6 +1,6 @@
 
 
-from dataset import PostData, ToTensor#, Log, random_split
+from dataset import BertData, SentTopicData, ToTensor#, Log, random_split
 from model_temps.lr import LR
 from model_temps.llr import LLR
 from model_temps.bert import Bert
@@ -62,8 +62,24 @@ print(f"Computing device: {device}")
 x_trans_list = [ToTensor()]
 y_trasn_list = [ToTensor()] #, Log()
 if args.model=='Bert' or args.model=='BertAtt':
-    data = PostData(cat_cols = ['stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'],\
-                    num_cols=[],\
+    data = SentTopicData(cat_cols = ['stock_code', 
+                                     'item_author_cate', 
+                                     'article_author', 
+                                     'article_source_cate', 
+                                     'month', 
+                                     'year', 
+                                     'eastmoney_robo_journalism', 
+                                     'media_robo_journalism', 
+                                     'SMA_robo_journalism'],\
+                    num_cols=['sentiment_score'],\
+                    topic_cols=['topics_val1',
+                                'topics_val2',
+                                'topics_val3',
+                                'topics_val4',
+                                'topics_val5',
+                                'topics_val6',
+                                'topics_val7',
+                                'topics_val8'],\
                     tar_cols=['viral'],\
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,\
@@ -112,10 +128,12 @@ elif args.model == 'BertAtt':
     cat_unique_count = data.get_embed_feature_unique_count()
     embed_feature_count = data.get_embed_feature_count()
     num_feature_count = data.get_num_feature_count()
+    topic_num = data.get_topic_num()
     model = BertAtt(dim=args.dim, 
                     cat_unique_count=cat_unique_count, 
                     embed_cols_count=embed_feature_count, 
                     num_cols_count=num_feature_count,
+                    topic_num=topic_num,
                     device=device,
                     bert=args.bert).to(device)
 else:
