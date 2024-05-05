@@ -120,7 +120,7 @@ class BertAtt(nn.Module):
             num_reps = None
 
         #cat representation
-        if self.cat_cols_count>0:
+        if self.embed_cols_count>0:
             cat_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
             for i in range(self.embed_cols_count):
                 embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
@@ -186,7 +186,7 @@ class BertAtt(nn.Module):
 
                 ys = torch.cat((ys,y.cpu().detach()))
                 preds = torch.cat((preds, pred.cpu().detach().max(1).indices))
-                # print(ys, preds)
+                print(ys, preds)
                 
                 if explain: #record attention scores for analysis
                     y_pos_index = (y==1).nonzero().squeeze().cpu().detach()

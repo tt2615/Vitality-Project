@@ -108,7 +108,7 @@ class SentTopicData(Dataset):
     def __init__(self, cat_cols=[], num_cols=[], topic_cols=[], tar_cols=[], max_padding_len=32, dir="./data/eastmoney_topic_bert.csv", x_transforms=None, y_transforms=None, bert='bert-base-chinese'):
 
         #load data
-        self.data = pd.read_csv(dir,index_col=0, nrows=64000)
+        self.data = pd.read_csv(dir,index_col=0)
         # print(self.data.columns)
         # print(self.data.dtypes)
 
