@@ -37,15 +37,6 @@ class ADJUST_R2:
 
         return adj_r2
     
-class ACCURACY:
-    def __call__(self, y, y_pred, *args):
-        print(y)
-        print(y_pred.max(1).indices)
-        print(sum(y==y_pred))
-        return 0
-    
-
-    
 class CONF_MATRIX:
     def __call__(self, y, y_pred, *args):
         y, y_pred = y.cpu(), y_pred.cpu()
@@ -56,9 +47,14 @@ class ACCURACY:
     def __call__(self, y, y_pred, *args):
         y, y_pred = y.cpu(), y_pred.cpu()
         accuracy = accuracy_score(y, y_pred)
-        print(classification_report(y,y_pred))
         return accuracy
     
+class CLASSIFICATION:
+    def __call__(self, y, y_pred, *args):
+        y, y_pred = y.cpu(), y_pred.cpu()
+        c_report = classification_report(y,y_pred)
+        return c_report
+
 class RECALL:
     def __call__(self, y, y_pred, *args):
         y, y_pred = y.cpu(), y_pred.cpu()

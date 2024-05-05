@@ -2,11 +2,10 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from transformers import BertModel, BertConfig, BertTokenizer
+from transformers import BertModel, BertTokenizer
+from evaluator import ACCURACY, CLASSIFICATION
 
-from evaluator import R2_SCORE, ADJUST_R2, ACCURACY, RECALL, PRECISION, F1
-
-import numpy as np
+# import numpy as np
 import pandas as pd
 
 class Attention(nn.Module):
@@ -43,10 +42,9 @@ class BertAtt(nn.Module):
         # configuration.hidden_dropout_prob = 0.8
         # configuration.attention_probs_dropout_prob = 0.8
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
-        # tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+        self.tokenizer = BertTokenizer.from_pretrained(bert)
         self.title_bert = BertModel.from_pretrained(bert, output_attentions=True)
         self.bert_linear = nn.Linear(768, dim, bias=True)
-        
 
         ## cat input embedding module #'stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'\
         self.embedding_layer = nn.ModuleList()
@@ -59,9 +57,9 @@ class BertAtt(nn.Module):
             self.network_layer.append(nn.Linear(1, dim, bias=True))
 
         self.topic_layer = nn.Linear(topic_num, dim, bias=True)
-        print(self.topic_layer.weight.dtype)
 
         self.attention_module = Attention(dim)
+        self.task_embedding = nn.Parameter(torch.rand(1,1,dim), requires_grad=True)
 
         self.classifier = nn.Linear(dim, 2)
 
@@ -69,7 +67,7 @@ class BertAtt(nn.Module):
         self.loss_fn = nn.CrossEntropyLoss()
 
         # define evaluator
-        self.evaluators = [ACCURACY()] #RECALL(),PRECISION(),F1()
+        self.evaluators = [ACCURACY(), CLASSIFICATION()]
 
     def forward(self, text_input, non_text_input):
 
@@ -149,7 +147,9 @@ class BertAtt(nn.Module):
         final_rep = torch.cat(non_none_tensors, dim=1) #batch*12*dim
         # print(final_rep.shape)
 
-        attentioned_rep, feature_att_score = self.attention_module(final_rep, text_rep) #batch*1*dim
+        # attentioned_rep, feature_att_score = self.attention_module(final_rep, text_rep) #batch*1*dim
+        attentioned_rep, feature_att_score = self.attention_module(final_rep, self.task_embedding.expand(final_rep.shape[0], -1, -1))
+        # print(self.task_embedding)
         # print(attentioned_rep.shape)
 
         logits = self.classifier(attentioned_rep.squeeze()) #batch*2
@@ -163,16 +163,34 @@ class BertAtt(nn.Module):
         # return loss
         loss = self.loss_fn(y_pred, y)
         return loss
+        
+    # def decode_text(self, pos_text_token):
+    #     text = []
+    #     for token in pos_text_token:
+    #         text.append(self.tokenizer.decode(token))
+    #     return self.tokenizer.decode(token)
     
+    # def generate_report(self, text, pos_preds, pos_title_att_scores, y_pos_len,pos_feature_att_scores, report_path):
+    #     feature_list = ['text', 'sentiment', 'stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic']
+    #     report = pd.DataFrame({
+    #         'text': text,
+    #         'pred': pos_preds,
+    #         'title_attention': list(pos_title_att_scores.cpu().detach().numpy()),
+    #         'features': [feature_list]*y_pos_len,
+    #         'feature_attention': list(pos_feature_att_scores.cpu().detach().numpy())
+    #     })
+    #     report.to_csv(report_path)
+
+
     def eval(self, eval_data:DataLoader, device, explain=False):
         with torch.no_grad():
             eval_loss = 0
-            metrics_vals = {type(k).__name__:torch.zeros(1).to(device) for k in self.evaluators}
-
+            # metrics_vals = {type(k).__name__:torch.zeros(1).to(device) for k in self.evaluators}
+            metrics_vals = {}
             preds, ys = torch.tensor([]), torch.tensor([])
             y_pos_len, pos_preds = 0, torch.tensor([])
             text, pos_feature_att_scores, pos_title_att_scores = [], torch.tensor([]).to(device), torch.tensor([]).to(device)
-            for x, y in eval_data:
+            for _, (x, y) in enumerate(eval_data):
 
                 text_input, non_text_input = x
                 
@@ -182,17 +200,19 @@ class BertAtt(nn.Module):
 
                 pred, feature_att_score, title_att_score = self.forward(text_input, non_text_input)
 
-                eval_loss = self.compute_loss(pred, y)
+                eval_loss += self.compute_loss(pred, y)
 
                 ys = torch.cat((ys,y.cpu().detach()))
-                preds = torch.cat((preds, pred.cpu().detach().max(1).indices))
-                print(ys, preds)
+                pred = pred.cpu().detach().max(1).indices
+                preds = torch.cat((preds, pred))
+                # print(ys, preds)
                 
                 if explain: #record attention scores for analysis
                     y_pos_index = (y==1).nonzero().squeeze().cpu().detach()
                     # print('---------')
+                    # print(y)
                     # print(y_pos_index)
-                    # print(len(y_pos_index.size()))
+                    # print(pred)
                     if y_pos_index.nelement() > 0:
                         y_pos_len += y_pos_index.nelement()
                         # print(y_pos_index)
@@ -200,7 +220,7 @@ class BertAtt(nn.Module):
                         if y_pos_index.nelement()==1:
                             y_pos_index = y_pos_index.unsqueeze(0)
 
-                        pos_preds = torch.cat((pos_preds, preds[y_pos_index]))
+                        pos_preds = torch.cat((pos_preds, pred[y_pos_index]))
                         # print(pos_preds)
 
                         pos_feature_att_score = feature_att_score[y_pos_index]
@@ -220,7 +240,7 @@ class BertAtt(nn.Module):
                         # print(text)
 
             for e in self.evaluators:
-                metrics_vals[type(e).__name__] += e(ys, preds) #[1, task]
+                metrics_vals[type(e).__name__] = e(ys, preds) #[1, task]
 
             # print(y_pos_len)
             # print(len(pos_preds))

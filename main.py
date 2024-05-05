@@ -5,11 +5,12 @@ from model_temps.lr import LR
 from model_temps.llr import LLR
 from model_temps.bert import Bert
 from model_temps.bertatt import BertAtt
+from evaluator import ACCURACY, CLASSIFICATION
 
 import torch
 import atexit
 from torch.utils.data import DataLoader, random_split
-torch.manual_seed(666)
+
 import argparse
 import logging
 from tqdm import tqdm, trange
@@ -21,6 +22,10 @@ import os
 import warnings
 warnings.filterwarnings("ignore")
 
+seed = 666
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.mps.manual_seed(seed)
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
@@ -39,6 +44,7 @@ parser.add_argument('--percent', type=int, default=5, help="mark top percentage 
 parser.add_argument('--pad_len', type=int, default=32, help="maximum padding length for a sentence", required=False)
 parser.add_argument('--bert', type=str, default='Langboat/mengzi-bert-base-fin', choices=['bert-base-chinese','Langboat/mengzi-bert-base-fin'], help="version of bert", required=False)
 parser.add_argument('--oversample', type=bool, default=False, help="whether oversample viral post", required=False)
+parser.add_argument('--report', type=bool, default=True, help="whether generate report", required=False)
 args = parser.parse_args()
 
 #Configure logging
@@ -72,6 +78,7 @@ if args.model=='Bert' or args.model=='BertAtt':
                                      'media_robo_journalism', 
                                      'SMA_robo_journalism'],\
                     num_cols=['sentiment_score'],\
+                    # num_cols=['item_views'],\
                     topic_cols=['topics_val1',
                                 'topics_val2',
                                 'topics_val3',
@@ -167,13 +174,11 @@ if args.mode=="test":
     print("-"*10 + "Start testing" + "-"*10)
     time_s = time.time()
     
-    test_loss, metrics, report = model.eval(valid_dataloader, device, explain=True)
-
-    if report is not None:
-            report.to_csv(f"./analysis/test_{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.csv")
+    t_batch = tqdm(test_dataloader, leave=False)
+    test_loss, metrics, report = model.eval(t_batch, device, explain=True)
 
     # print result
-    print(f"AVG TEST LOSS: {test_loss}")
+    print(f"AVG TEST LOSS: {test_loss/len(t_batch)}")
     for e, val in metrics.items():
         print(f"AVG SCORE for {e}: {val}")
     
@@ -224,10 +229,11 @@ elif args.mode=="train":
             pred = output[0]
 
             batch_loss = model.compute_loss(pred, y)
-            # if batch_loss > 0.1: #check if prediction on gt is bad
-            #     print(batch_loss, pred.max(1).indices-y)
+            #check if prediction on gt is bad: (pg)00->0;11->2;01->-1;10->1
+            pred_index = pred.max(1).indices.detach().cpu().numpy()
+            y_index = y.detach().cpu().numpy()
+            print([(pred_val + y_val) if pred_val == y_val else (pred_val - y_val) for pred_val, y_val in zip(pred_index, y_index)])
             epoch_loss += batch_loss
-            
 
             # backpropagation
             optimizer.zero_grad()
@@ -239,9 +245,13 @@ elif args.mode=="train":
 
         # eavluate on test data
         train_loss = epoch_loss/len(train_dataloader)
-        valid_loss, metrics, report = model.eval(valid_dataloader, device, explain=True)
+        t_batch = tqdm(valid_dataloader, leave=False)
+        valid_loss, metrics, report = model.eval(t_batch, device, explain=True)
+        for e, val in metrics.items():
+            print(f"AVG SCORE for {e}: {val}")
+
         logging.debug(f"train loss: {train_loss}\n")
-        logging.debug(f"valid loss: {valid_loss}\n")
+        logging.debug(f"valid loss: {valid_loss/len(t_batch)}\n")
         logging.debug(f"metrics performance: {metrics}\n")
         logging.debug('-'*10+'\n')
 

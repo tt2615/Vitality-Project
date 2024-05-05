@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from ast import literal_eval
 
 import torch
 torch.manual_seed(666)
@@ -108,7 +107,7 @@ class SentTopicData(Dataset):
     def __init__(self, cat_cols=[], num_cols=[], topic_cols=[], tar_cols=[], max_padding_len=32, dir="./data/eastmoney_topic_bert.csv", x_transforms=None, y_transforms=None, bert='bert-base-chinese'):
 
         #load data
-        self.data = pd.read_csv(dir,index_col=0)
+        self.data = pd.read_csv(dir,index_col=0, nrows=64000)
         # print(self.data.columns)
         # print(self.data.dtypes)
 
