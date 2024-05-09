@@ -37,6 +37,7 @@ class BertAtt(nn.Module):
         self.topic_num = topic_num
         self.device = device
 
+
         ## text input module
         # configuration = BertConfig.from_pretrained('bert-base-chinese', output_hidden_states=True, output_attentions=True)
         # configuration.hidden_dropout_prob = 0.8
@@ -44,7 +45,12 @@ class BertAtt(nn.Module):
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
         self.tokenizer = BertTokenizer.from_pretrained(bert)
         self.title_bert = BertModel.from_pretrained(bert, output_attentions=True)
-        self.bert_linear = nn.Linear(768, dim, bias=True)
+        self.bert_linear = nn.Sequential(
+            nn.Linear(768, dim*2, bias=True),
+            nn.ReLU(),
+            nn.Linear(dim*2, dim, bias=True),
+            nn.Dropout(0.1) 
+        )
 
         ## cat input embedding module #'stock_code', 'item_author', 'article_author', 'article_source', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism'\
         self.embedding_layer = nn.ModuleList()
@@ -54,14 +60,29 @@ class BertAtt(nn.Module):
         ## num input network module #'item_views', 'item_comment_counts', 'article_likes',
         self.network_layer = nn.ModuleList()
         for i in range(num_cols_count):
-            self.network_layer.append(nn.Linear(1, dim, bias=True))
+            self.network_layer.append(nn.Sequential(
+            nn.Linear(1, dim//2, bias=True),
+            nn.ReLU(),
+            nn.Linear(dim//2, dim, bias=True),
+            nn.Dropout(0.1) 
+        ))
 
-        self.topic_layer = nn.Linear(topic_num, dim, bias=True)
+        self.topic_layer = nn.Sequential(
+            nn.Linear(topic_num, dim//2, bias=True),
+            nn.ReLU(),
+            nn.Linear(dim//2, dim, bias=True),
+            nn.Dropout(0.1) 
+        )
 
         self.attention_module = Attention(dim)
         self.task_embedding = nn.Parameter(torch.rand(1,1,dim), requires_grad=True)
 
-        self.classifier = nn.Linear(dim, 2)
+        self.classifier = nn.Sequential(
+            nn.Linear(dim, 5, bias=True),
+            nn.ReLU(),
+            nn.Linear(5, 2, bias=True),
+            nn.Dropout(0.1) 
+        )
 
         # define loss
         self.loss_fn = nn.CrossEntropyLoss()

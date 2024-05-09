@@ -208,10 +208,10 @@ elif args.mode=="train":
         batch_loss = 0
         for batch, (x, y) in enumerate(t_batch):
             text_input, non_text_input = x
-            if batch%10 == 0:
-                t_batch.set_description(f"Batch {batch} - avg loss {batch_loss}")
-                t_batch.refresh()
-                # logging.info(f"Batch {batch} - avg loss {batch_loss}\n")
+            # if batch%10 == 0:
+            t_batch.set_description(f"Batch {batch} - batch loss {batch_loss}")
+            t_batch.refresh()
+            # logging.info(f"Batch {batch} - avg loss {batch_loss}\n")
 
             #load data to device
             text_input = text_input.to(device)
@@ -244,14 +244,14 @@ elif args.mode=="train":
             time.sleep(0.01)
 
         # eavluate on test data
-        train_loss = epoch_loss/len(train_dataloader)
+        t_batch.set_description(f"Epoch {epoch} evaluation:")
         t_batch = tqdm(valid_dataloader, leave=False)
         valid_loss, metrics, report = model.eval(t_batch, device, explain=True)
         for e, val in metrics.items():
             print(f"AVG SCORE for {e}: {val}")
 
-        logging.debug(f"train loss: {train_loss}\n")
-        logging.debug(f"valid loss: {valid_loss/len(t_batch)}\n")
+        logging.debug(f"train loss: {epoch_loss/len(train_dataloader)}\n")
+        logging.debug(f"valid loss: {valid_loss/len(valid_dataloader)}\n")
         logging.debug(f"metrics performance: {metrics}\n")
         logging.debug('-'*10+'\n')
 
