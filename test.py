@@ -1,123 +1,40 @@
-import numpy as np
+import pandas as pd
 
-data = """
-1 1 0.9374419938037347
-                2 1 0.8195663553449742
-                3 1 0.8721586929272522
-                4 1 0.8789216537712488
-                5 1 0.7121256636338397
-                6 1 0.8547937919484295
-                7 1 0.8164985030255599
-                8 1 0.37054162209318375
-                9 1 0.7523201985530955
-                10 1 0.2264573838529891
-                11 1 0.14964924715750388
-                12 1 0.062364616979004195
-                13 1 0.36894376923299343
-                14 1 0.4462475500577713
-                15 1 0.19995892926191744
-                16 1 0.13868727237171827
-                17 1 0.17781922203218023
-                18 1 0.18369991392811919
-                19 1 0.3086695085752318
-                20 1 0.13959514770844686
-                
-                1 2 0.8431325601052234
-                2 2 0.7161167720876455
-                3 2 0.7108573565745424
-                4 2 0.8278072318257138
-                5 2 0.8469794938518787
-                6 2 0.6790982927928301
-                7 2 0.22015158431683696
-                8 2 0.7017198083020691
-                9 2 0.34141381920802283
-                10 2 0.7077715335662974
-                11 2 0.7450746881012921
-                12 2 0.5080043308475902
-                13 2 0.516984583588327
-                14 2 0.23727150816538836
-                15 2 0.15509843448332594
-                16 2 0.35158047516012236
-                17 2 0.13912860324863224
-                18 2 0.00002
-                19 2 0.025601212225896314
-                20 2 0.011993660229255194
-                
-                1 3 0.8593556975584582
-                2 3 0.9050091247723273
-                3 3 0.7688329758738047
-                4 3 0.6418023741854344
-                5 3 0.8078505699429454
-                6 3 0.605877223196998
-                7 3 0.7685215396505779
-                8 3 0.24126641980055585
-                9 3 0.5733350770725738
-                10 3 0.4316344316312387
-                11 3 0.05921396475919177
-                12 3 0.5738684177254949
-                13 3 0.49920787320540216
-                14 3 0.20400944378738087
-                15 3 0.20071009562916195
-                16 3 0.09410197190918258
-                17 3 0.17483176315014662
-                18 3 0.32710008607188085
-                19 3 0.07298466190567571
-                20 3 0.0000001
+# Assuming 'raw_data' is your DataFrame
+# Create some sample data for demonstration
+data = {'viral': [0, 1, 0, 1, 0],
+        'item_author_cate_index': [1, 2, 1, 3, 2],
+        'article_author_index': [4, 5, 4, 6, 5],
+        'article_source_cate_index': [7, 8, 7, 9, 8],
+        'other_column': ['A', 'B', 'C', 'D', 'E']}
+raw_data = pd.DataFrame(data)
 
-                1 4 0.8700697485325835
-                2 4 0.9029077477950529
-                3 4 0.7585509746244004
-                4 4 0.701068740217603
-                5 4 0.49944427257133617
-                6 4 0.3654306920617425
-                7 4 0.6208283730070252
-                8 4 0.7804721498041911
-                9 4 0.35013090516630774
-                10 4 0.38350385366818207
-                11 4 0.5312620999820123
-                12 4 0.40344292622726674
-                13 4 0.2138162794752143
-                14 4 0.17767149798945947
-                15 4 0.10463254062559468
-                16 4 0.037230280558976814
-                17 4 0.11662041156904102
-                18 4 0.32710008607188085
-                19 4 0.10354461729319625
-                20 4 0.056811192062297955
-"""
+# Find all rows where 'viral' column has a value of 1
+positive_rows = raw_data[raw_data['viral'] == 1]
 
-data = data.split()[2::3]
-data1 = np.array([float(x) for x in data[:20]])
-data2 = np.array([float(x) for x in data[20:40]])
-data3 = np.array([float(x) for x in data[40:60]])
-data4 = np.array([float(x) for x in data[60:80]])
+# Initialize an empty list to store concatenated rows
+concatenated_rows = []
 
-def process_data(arr, std):
-    result = np.zeros((3,20))
-   
+# Iterate over each positive row
+for index, positive_row in positive_rows.iterrows():
+    # Find corresponding negative row based on specified conditions
+    negative_rows = raw_data[(raw_data['item_author_cate_index'] == positive_row['item_author_cate_index']) &
+                             (raw_data['article_author_index'] == positive_row['article_author_index']) &
+                             (raw_data['article_source_cate_index'] == positive_row['article_source_cate_index']) &
+                             (raw_data['viral'] == 0)]
     
-    for index,mean in enumerate(arr):
-        if mean<1e-4:
-            num1=num2=num3=mean
-        else:
-            num1=num2=num3 = -1
-            while num1<=0 or num2<=0 or num3<=0:
-                # print(mean)
-                num1 = np.random.normal(mean, std)
-                num2 = np.random.normal(mean, std)
-                num3 = mean*3 - num1 - num2
-        result[0][index] = num1
-        result[1][index] = num2
-        result[2][index] = num3
-    
-    return result
+    # Check if there are valid negative rows
+    if not negative_rows.empty:
+        # Take the first negative row
+        negative_row = negative_rows.iloc[0]
+        
+        # Concatenate negative row to positive row with modifications
+        concatenated_row = pd.concat([positive_row, negative_row.add_prefix('neg_')])
+        
+        # Append concatenated row to the list
+        concatenated_rows.append(concatenated_row)
 
-def print_data(arr, num):
-    for ind,index in enumerate(num):
-        for i,d in enumerate(arr[ind]):
-            print(f"{i+1} {index} {d}")
-        print()
+# Create a new DataFrame from the list of concatenated rows
+result_df = pd.DataFrame(concatenated_rows)
 
-
-print_data(process_data(data4, 0.05), [6,10,12])
-
+print(result_df)

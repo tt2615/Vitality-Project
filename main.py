@@ -1,6 +1,8 @@
 
 
-from dataset import BertData, SentTopicData, ToTensor#, Log, random_split
+from dataset.bertdata import BertData
+from dataset.bprdata import BprData
+from dataset.transform import ToTensor#, Log, random_split
 from model_temps.lr import LR
 from model_temps.llr import LLR
 from model_temps.bert import Bert
@@ -29,7 +31,7 @@ torch.mps.manual_seed(seed)
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', choices=['LR', 'LLR', 'Bert', 'BertAtt'], help="MTL model", required=True)
+parser.add_argument('--model', choices=['LR', 'LLR', 'Bert', 'BertAtt', 'BertBpr'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', type=str, default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
@@ -65,18 +67,18 @@ else:
 print(f"Computing device: {device}")
 
 #2. Load data
-x_trans_list = [ToTensor()]
-y_trasn_list = [ToTensor()] #, Log()
 if args.model=='Bert' or args.model=='BertAtt':
-    data = SentTopicData(cat_cols = ['stock_code', 
-                                     'item_author_cate', 
-                                     'article_author', 
-                                     'article_source_cate', 
-                                     'month', 
-                                     'year', 
-                                     'eastmoney_robo_journalism', 
-                                     'media_robo_journalism', 
-                                     'SMA_robo_journalism'],\
+    x_trans_list = [ToTensor()]
+    y_trasn_list = [ToTensor()] #, Log()
+    data = BertData(cat_cols = ['stock_code', 
+                                'item_author_cate', 
+                                'article_author', 
+                                'article_source_cate', 
+                                'month', 
+                                'year', 
+                                'eastmoney_robo_journalism', 
+                                'media_robo_journalism', 
+                                'SMA_robo_journalism'],\
                     num_cols=['sentiment_score'],\
                     # num_cols=['item_views'],\
                     topic_cols=['topics_val1',
@@ -92,6 +94,30 @@ if args.model=='Bert' or args.model=='BertAtt':
                     x_transforms=x_trans_list,\
                     y_transforms=y_trasn_list,
                     bert = args.bert)
+elif args.model=='BertBpr':
+    x_trans_list = [ToTensor()]
+    data = BprData(cat_cols = ['stock_code',
+                                'month', 
+                                'year', 
+                                'eastmoney_robo_journalism', 
+                                'media_robo_journalism', 
+                                'SMA_robo_journalism'],\
+                    num_cols=['sentiment_score'],\
+                    topic_cols=['topics_val1',
+                                'topics_val2',
+                                'topics_val3',
+                                'topics_val4',
+                                'topics_val5',
+                                'topics_val6',
+                                'topics_val7',
+                                'topics_val8'],\
+                    user_cols = ['item_author_cate', 
+                                 'article_author', 
+                                 'article_source_cate'],\
+                    tar_cols=['viral'],\
+                    max_padding_len=args.pad_len,
+                    x_transforms=x_trans_list,
+                    bert = args.bert)
 else:
     data = None #LR to be replaced
 
@@ -102,15 +128,7 @@ train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1], generator=
 # exit()                                                                    
                                                                                 
 # For unbalanced dataset we create a weighted sampler
-if args.oversample:
-    class_weights = 1/data.get_class_count().values
-    # print(class_weights)#[1.57274743e-05 2.39808153e-03]
-    # class_weights = [0.005, 1]
-    weights = [class_weights[int(train_data[i][1].item())] for i in range(len(train_data))]
-    sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights), replacement=True)
-    train_dataloader = DataLoader(train_data, batch_size=args.batch, sampler=sampler)
-else:
-    train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True) 
+train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True) 
 valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")

@@ -1,5 +1,5 @@
 #python single_LR.py --device=cuda --batch=1024 --lr=5e-4 --optim=Adam --epoch=100 --comment=log
-from dataset import PostData, ToTensor, Log, random_split
+from dataset.bertdata import PostData, ToTensor, Log, random_split
 from models import SLR
 
 import torch
