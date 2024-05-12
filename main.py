@@ -7,6 +7,7 @@ from model_temps.lr import LR
 from model_temps.llr import LLR
 from model_temps.bert import Bert
 from model_temps.bertatt import BertAtt
+from model_temps.bertbpr import BertAttBpr
 from evaluator import ACCURACY, CLASSIFICATION
 
 import torch
@@ -96,12 +97,12 @@ if args.model=='Bert' or args.model=='BertAtt':
                     bert = args.bert)
 elif args.model=='BertBpr':
     x_trans_list = [ToTensor()]
-    data = BprData(cat_cols = ['stock_code',
-                                'month', 
-                                'year', 
-                                'eastmoney_robo_journalism', 
-                                'media_robo_journalism', 
-                                'SMA_robo_journalism'],\
+    data = BprData(cat_cols = ['stock_code_index',
+                                'month_index', 
+                                'year_index', 
+                                'eastmoney_robo_journalism_index', 
+                                'media_robo_journalism_index', 
+                                'SMA_robo_journalism_index'],\
                     num_cols=['sentiment_score'],\
                     topic_cols=['topics_val1',
                                 'topics_val2',
@@ -111,10 +112,10 @@ elif args.model=='BertBpr':
                                 'topics_val6',
                                 'topics_val7',
                                 'topics_val8'],\
-                    user_cols = ['item_author_cate', 
-                                 'article_author', 
-                                 'article_source_cate'],\
-                    tar_cols=['viral'],\
+                    user_cols = ['item_author_cate_index', 
+                                 'article_author_index', 
+                                 'article_source_cate_index'],\
+                    tar_col = 'viral',
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,
                     bert = args.bert)
@@ -157,6 +158,22 @@ elif args.model == 'BertAtt':
     model = BertAtt(dim=args.dim, 
                     cat_unique_count=cat_unique_count, 
                     embed_cols_count=embed_feature_count, 
+                    num_cols_count=num_feature_count,
+                    topic_num=topic_num,
+                    device=device,
+                    bert=args.bert).to(device)
+elif args.model == 'BertBpr':
+    cat_unique_count = data.get_cat_feature_unique_count()
+    user_unique_count = data.get_user_feature_unique_count()
+    cat_feature_count = data.get_cat_feature_count()
+    num_feature_count = data.get_num_feature_count()
+    user_feature_count = data.get_user_feature_count()
+    topic_num = data.get_topic_num()
+    model = BertAttBpr(dim=args.dim, 
+                    cat_unique_count=cat_unique_count,
+                    user_unique_count=user_unique_count,
+                    cat_cols_count=cat_feature_count, 
+                    user_cols_count=user_feature_count,
                     num_cols_count=num_feature_count,
                     topic_num=topic_num,
                     device=device,
@@ -224,33 +241,15 @@ elif args.mode=="train":
         
         t_batch = tqdm(train_dataloader, leave=False)
         batch_loss = 0
-        for batch, (x, y) in enumerate(t_batch):
-            text_input, non_text_input = x
-            # if batch%10 == 0:
+        for batch, batch_data in enumerate(t_batch):
+
+            # record batch_loss
             t_batch.set_description(f"Batch {batch} - batch loss {batch_loss}")
             t_batch.refresh()
             # logging.info(f"Batch {batch} - avg loss {batch_loss}\n")
+            
+            batch_loss = model.train(batch_data)
 
-            #load data to device
-            text_input = text_input.to(device)
-            non_text_input = non_text_input.to(device)
-            y = y.squeeze().to(torch.long).to(device)
-            # print(y)
-
-            # print('-----')
-            # print(text_input.get_device())
-            # print(non_text_input.get_device())
-            # print(y.get_device())
-            # print(next(model.parameters()).device)
-
-            output = model(text_input, non_text_input)
-            pred = output[0]
-
-            batch_loss = model.compute_loss(pred, y)
-            #check if prediction on gt is bad: (pg)00->0;11->2;01->-1;10->1
-            pred_index = pred.max(1).indices.detach().cpu().numpy()
-            y_index = y.detach().cpu().numpy()
-            print([(pred_val + y_val) if pred_val == y_val else (pred_val - y_val) for pred_val, y_val in zip(pred_index, y_index)])
             epoch_loss += batch_loss
 
             # backpropagation

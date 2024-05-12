@@ -28,14 +28,14 @@ class Attention(nn.Module):
     
 
 class BertAttBpr(nn.Module):
-    def __init__(self, dim, p_cat_unique_count, u_cat_unique_count, embed_cols_count, num_cols_count, topic_num, user_cols_count, device, bert='bert-base-chinese'):
+    def __init__(self, dim, cat_unique_count, user_unique_count, cat_cols_count, user_cols_count, num_cols_count, topic_num, device, bert='bert-base-chinese'):
         super(BertAttBpr, self).__init__()
         # define parameters
         self.dim = dim
-        self.embed_cols_count = embed_cols_count
+        self.cat_cols_count = cat_cols_count
         self.num_cols_count = num_cols_count
-        self.topic_num = topic_num
         self.user_cols_count = user_cols_count
+        self.topic_num = topic_num
         self.device = device
 
         ## text input module
@@ -53,9 +53,9 @@ class BertAttBpr(nn.Module):
         )
 
         ## cat input embedding module #'item_author', 'article_author', 'article_source'
-        self.embedding_layer = nn.ModuleList()
-        for i in range(embed_cols_count):
-            self.embedding_layer.append(nn.Embedding(p_cat_unique_count[i], dim))
+        self.post_embedding_layer = nn.ModuleList()
+        for i in range(cat_cols_count):
+            self.post_embedding_layer.append(nn.Embedding(cat_unique_count[i], dim))
 
         ## num input network module #'item_views', 'item_comment_counts', 'article_likes'
         self.network_layer = nn.ModuleList()
@@ -76,27 +76,18 @@ class BertAttBpr(nn.Module):
 
         self.user_attention_module = Attention(dim)
         self.post_attention_module = Attention(dim)
+        # self.user_post_attention_module = Attention(dim)
         self.task_embedding = nn.Parameter(torch.rand(1,1,dim), requires_grad=True)
 
         ## user input embedding module # 'item_author', 'article_author', 'article_source'
         self.user_embedding_layer = nn.ModuleList()
         for i in range(user_cols_count):
-            self.user_embedding_layer.append(nn.Embedding(u_cat_unique_count[i], dim))
+            self.user_embedding_layer.append(nn.Embedding(user_unique_count[i], dim))
 
         # define evaluator
         self.evaluators = [ACCURACY(), CLASSIFICATION()]
 
-    def forward(self, pos_input, neg_input):
-        pos_score, p_feature_att_score, p_title_att_score = self.compute_score(pos_input)
-        neg_score, n_feature_att_score, n_title_att_score = self.compute_score(neg_input)
-
-        return pos_score, p_feature_att_score, p_title_att_score, neg_score, n_feature_att_score, n_title_att_score
-
-
-    def compute_score(self, input):
-
-        text_input, non_text_input, user_input = input
-
+    def forward(self, text_input, non_text_input, user_input):
         ## news representation
 
         #text representation
@@ -142,10 +133,10 @@ class BertAttBpr(nn.Module):
             num_reps = None
 
         #cat representation
-        if self.embed_cols_count>0:
+        if self.cat_cols_count>0:
             cat_reps = torch.zeros((non_text_input.shape[0],1,self.dim)).to(self.device)
-            for i in range(self.embed_cols_count):
-                embed_rep = self.embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
+            for i in range(self.cat_cols_count):
+                embed_rep = self.post_embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
                 cat_reps = torch.cat((cat_reps, embed_rep.unsqueeze(1)),dim=1)
             cat_reps = cat_reps[:,1:,:] #batch*9*dim
             # print(cat_reps.shape)
@@ -172,7 +163,7 @@ class BertAttBpr(nn.Module):
         # print(final_rep.shape)
 
         # attentioned_rep, feature_att_score = self.attention_module(final_rep, text_rep) #batch*1*dim
-        post_attentioned_rep, post_feature_att_score = self.attention_module(post_reps, self.task_embedding.expand(post_reps.shape[0], -1, -1))
+        post_attentioned_rep, post_feature_att_score = self.post_attention_module(post_reps, self.task_embedding.expand(post_reps.shape[0], -1, -1))
         # print(self.task_embedding)
         # print(attentioned_rep.shape)
 
@@ -183,13 +174,13 @@ class BertAttBpr(nn.Module):
             article_source_cate_index                 1
         """
         user_reps = torch.zeros((user_input.shape[0],1,self.dim)).to(self.device)
-        for i in range(self.user_embed_cols_count):
-            embed_rep = self.user_embedding_layer[i](user_input[i].to(torch.int)) #batch*dim
+        for i in range(self.user_cols_count):
+            embed_rep = self.user_embedding_layer[i](user_input[:,i].to(torch.int)) #batch*dim
             user_reps = torch.cat((user_reps, embed_rep.unsqueeze(1)),dim=1)
         user_reps = user_reps[:,1:,:] #batch*9*dim
         # print(user_reps.shape)
 
-        user_attentioned_rep, user_feature_att_score = self.attention_module(user_reps, self.task_embedding.expand(user_reps.shape[0], -1, -1))
+        user_attentioned_rep, user_feature_att_score = self.user_attention_module(user_reps, self.task_embedding.expand(user_reps.shape[0], -1, -1))
 
         scores = torch.bmm(user_attentioned_rep, post_attentioned_rep.transpose(1, 2)).squeeze()
         # print(scores.shape)
@@ -198,36 +189,50 @@ class BertAttBpr(nn.Module):
         # print(feature_att_score.shape)
 
         return scores, feature_att_score, title_att_score
+        # pos_score, p_feature_att_score, p_title_att_score = self.compute_score(pos_input)
+        # neg_score, n_feature_att_score, n_title_att_score = self.compute_score(neg_input)
+
+        # return pos_score, p_feature_att_score, p_title_att_score, neg_score, n_feature_att_score, n_title_att_score
     
-    def compute_loss(self, scores): ##BPR loss
-        positive_scores, negative_scores = scores
-        score_diff = positive_scores - negative_scores
+    def train(self, data):
+        pos_data, neg_data = data
+
+        #---for pos data
+        pos_text_input, pos_non_text_input, pos_user_input, _ = pos_data
+
+        #load data to device
+        pos_text_input = pos_text_input.to(self.device)
+        pos_non_text_input = pos_non_text_input.to(self.device)
+        pos_user_input = pos_user_input.to(self.device)
+
+        pos_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
+
+        #---for neg data
+        neg_text_input, neg_non_text_input, neg_user_input = neg_data
+
+        #load data to device
+        neg_text_input = neg_text_input.to(self.device)
+        neg_non_text_input = neg_non_text_input.to(self.device)
+        neg_user_input = neg_user_input.to(self.device)
+
+        neg_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
+
+        batch_loss = self.compute_loss(pos_scores, neg_scores)
+            
+        return batch_loss
+    
+    def compute_loss(self, pos_scores, neg_scores): ##BPR loss
+
+        score_diff = pos_scores - neg_scores
 
         # Compute the BPR loss
         loss = -torch.log(torch.sigmoid(score_diff)).sum()
 
         # Add L2 regularization
         lambda_reg = 0.01
-        reg_loss = lambda_reg * (torch.norm(positive_scores) + torch.norm(negative_scores))
+        reg_loss = lambda_reg * (torch.norm(pos_scores) + torch.norm(neg_scores))
 
         return loss + reg_loss
-        
-    # def decode_text(self, pos_text_token):
-    #     text = []
-    #     for token in pos_text_token:
-    #         text.append(self.tokenizer.decode(token))
-    #     return self.tokenizer.decode(token)
-    
-    # def generate_report(self, text, pos_preds, pos_title_att_scores, y_pos_len,pos_feature_att_scores, report_path):
-    #     feature_list = ['text', 'sentiment', 'stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic']
-    #     report = pd.DataFrame({
-    #         'text': text,
-    #         'pred': pos_preds,
-    #         'title_attention': list(pos_title_att_scores.cpu().detach().numpy()),
-    #         'features': [feature_list]*y_pos_len,
-    #         'feature_attention': list(pos_feature_att_scores.cpu().detach().numpy())
-    #     })
-    #     report.to_csv(report_path)
 
 
     def eval(self, eval_data:DataLoader, device, explain=False):
@@ -238,20 +243,42 @@ class BertAttBpr(nn.Module):
             preds, ys = torch.tensor([]), torch.tensor([])
             y_pos_len, pos_preds = 0, torch.tensor([])
             text, pos_feature_att_scores, pos_title_att_scores = [], torch.tensor([]).to(device), torch.tensor([]).to(device)
-            for _, (x, y) in enumerate(eval_data):
+            for _, (pos_data, neg_data) in enumerate(eval_data):
 
-                text_input, non_text_input = x
-                
-                text_input = text_input.to(device)
-                non_text_input = non_text_input.to(device)
-                y = y.squeeze().to(torch.long).to(device)
+                #---for pos data
+                pos_text_input, pos_non_text_input, pos_user_input, y = pos_data
 
-                pred, feature_att_score, title_att_score = self.forward(text_input, non_text_input)
+                #load data to device
+                pos_text_input = pos_text_input.to(self.device)
+                pos_non_text_input = pos_non_text_input.to(self.device)
+                pos_user_input = pos_user_input.to(self.device)
 
-                eval_loss += self.compute_loss(pred, y)
+                pos_scores, feature_att_score, title_att_score = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
+
+                #---for neg data
+                neg_text_input, neg_non_text_input, neg_user_input = neg_data
+
+                #load data to device
+                neg_text_input = neg_text_input.to(self.device)
+                neg_non_text_input = neg_non_text_input.to(self.device)
+                neg_user_input = neg_user_input.to(self.device)
+
+                neg_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
+
+                eval_loss += self.compute_loss(pos_scores, neg_scores)
 
                 ys = torch.cat((ys,y.cpu().detach()))
-                pred = pred.cpu().detach().max(1).indices
+
+                # Calculate the number of elements to set to 1
+                pos_scores = pos_scores.cpu().detach()
+                x_percent = 0.1
+                num_ones = int(y.shape[0] * x_percent)
+
+                # Sort the tensor in descending order
+                sorted_pred, _ = torch.sort(pos_scores, descending=True)
+
+                # Threshold the tensor
+                pred = torch.where(pos_scores >= sorted_pred[num_ones], torch.tensor(1.0), torch.tensor(0.0))
                 preds = torch.cat((preds, pred))
                 # print(ys, preds)
                 
@@ -281,7 +308,7 @@ class BertAttBpr(nn.Module):
                         pos_title_att_scores = torch.cat((pos_title_att_scores, pos_title_att_score), 0)
                         # print(pos_title_att_scores)
 
-                        pos_text_token = text_input[y_pos_index,0,:]
+                        pos_text_token = pos_text_input[y_pos_index,0,:]
                         tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
                         for token in pos_text_token:
                             text.append(tokenizer.decode(token))
@@ -298,7 +325,7 @@ class BertAttBpr(nn.Module):
 
             #generate analysis report
             if explain and len(text)>0:
-                feature_list = ['text', 'sentiment', 'stock_code', 'item_author', 'article_author', 'article_source', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic']
+                feature_list = ['text', 'sentiment', 'stock_code', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic', 'item_author', 'article_author', 'article_source']
                 report = pd.DataFrame({
                     'text': text,
                     'pred': pos_preds,

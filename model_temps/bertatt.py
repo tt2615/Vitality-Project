@@ -178,6 +178,34 @@ class BertAtt(nn.Module):
 
         return logits, feature_att_score, title_att_score
     
+    def train(self,data):
+        x,y = data
+
+        text_input, non_text_input = x
+
+        #load data to device
+        text_input = text_input.to(self.device)
+        non_text_input = non_text_input.to(self.device)
+        y = y.squeeze().to(torch.long).to(self.device)
+        # print(y)
+
+        # print('-----')
+        # print(text_input.get_device())
+        # print(non_text_input.get_device())
+        # print(y.get_device())
+        # print(next(model.parameters()).device)
+
+        output = self.forward(text_input, non_text_input)
+        pred = output[0]
+
+        batch_loss = self.compute_loss(pred, y)
+        #check if prediction on gt is bad: (pg)00->0;11->2;01->-1;10->1
+        pred_index = pred.max(1).indices.detach().cpu().numpy()
+        y_index = y.detach().cpu().numpy()
+        print([(pred_val + y_val) if pred_val == y_val else (pred_val - y_val) for pred_val, y_val in zip(pred_index, y_index)])
+            
+        return batch_loss
+    
     def compute_loss(self, y_pred, y):
         # l2_norm = torch.norm(y - y_pred) #l2 norm
         # loss = torch.pow(l2_norm, 2) #sum of l2 norm
