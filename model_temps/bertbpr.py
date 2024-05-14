@@ -228,7 +228,7 @@ class BertAttBpr(nn.Module):
 
         # Compute the BPR loss
         # print(pos_scores, neg_scores)
-        print(score_diff)
+        # print(score_diff)
         loss = -torch.log(torch.sigmoid(score_diff)).sum()
 
         # Add L2 regularization

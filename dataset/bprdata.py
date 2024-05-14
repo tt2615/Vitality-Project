@@ -11,14 +11,14 @@ from torch.utils.data import Dataset
 from transformers import BertTokenizer
 
 class BprData():
-    def __init__(self, cat_cols=[], num_cols=[], topic_cols=[], user_cols=[], tar_col='viral', dir="./data/eastmoney_topic_bert.csv", max_padding_len=32, x_transforms=None, bert='bert-base-chinese'):
+    def __init__(self, cat_cols=[], num_cols=[], topic_cols=[], user_cols=[], tar_col='viral', dir="./data/eastmoney_bert.csv", max_padding_len=32, x_transforms=None, bert='bert-base-chinese'):
 
         #load data
-        self.data = pd.read_csv(dir)
+        self.data = pd.read_csv(dir, nrows=64000)
         # print(self.data.dtypes)
 
         # Drop the specified columns from the DataFrame
-        columns_to_exclude = ['Unnamed: 0.2', 'Unnamed: 0.1', 'Unnamed: 0','cut_titles','topics','dominant_topic','topics_val']  # Add the names of the columns you want to exclude
+        columns_to_exclude = ['cut_titles','topics','dominant_topic','topics_val']  # Add the names of the columns you want to exclude
         self.data = self.data.drop(columns=columns_to_exclude)
 
         gen = torch.Generator()
@@ -106,7 +106,7 @@ class BprSampledData(Dataset):
         
         if not exists(dir):
             self.form_bpr_train_data(data, dir)
-        self.data = pd.read_csv(dir, delimiter='\\')
+        self.data = pd.read_csv(dir, delimiter='<')
 
         ##---for pos cols-----
         self.cat_cols = cat_cols
@@ -200,7 +200,7 @@ class BprSampledData(Dataset):
         print(f"form bpr sampled data to :{dir}")
         positive_rows = data[data['viral'] == 1]
 
-        neg_samples = 100
+        neg_sample_num = 100
         null_count = 0
 
         # Open the output file
@@ -224,35 +224,37 @@ class BprSampledData(Dataset):
                     null_count+=1
 
                 elif len(negative_rows)==1:
-                    concatenated_row = pd.concat([positive_rows, negative_row.add_prefix('neg_')])
+                    neg_samples = negative_rows
+                    concatenated_row = pd.concat([positive_row, neg_samples.add_prefix('neg_')])
                     if first_line:
-                        f.write('\\'.join(map(str, concatenated_row.keys()))+'\n')
+                        f.write('<'.join(map(str, concatenated_row.keys()))+'\n')
                         first_line = False
 
                     # Write the concatenated row to the file
-                    f.write('\\'.join(map(str, concatenated_row.values)) + '\n')
+                    f.write('<'.join(map(str, concatenated_row.values)) + '\n')
                     continue
 
 
-                elif 0<len(negative_rows)<=neg_samples:
+                elif 1<len(negative_rows)<=neg_sample_num:
                     # Take the first negative row
-                    negative_row = negative_rows
+                    neg_samples = negative_rows
                 
-                elif len(negative_rows)>neg_samples:
+                elif len(negative_rows)>neg_sample_num:
                     # Take the first negative row
-                    negative_row = negative_rows.sample(n=neg_samples, replace=False)
+                    neg_samples = negative_rows.sample(n=neg_sample_num, replace=False)
                 
                 # Iterate over each sampled negative row
-                for _, negative_row in negative_row.iterrows():
+                for _, negative_row in neg_samples.iterrows():
                     # Concatenate negative row to positive row with modifications
                     concatenated_row = pd.concat([positive_row, negative_row.add_prefix('neg_')])
 
                     if first_line:
-                        f.write('\\'.join(map(str, concatenated_row.keys()))+'\n')
+                        f.write('<'.join(map(str, concatenated_row.keys()))+'\n')
                         first_line = False
 
                     # Write the concatenated row to the file
-                    f.write('\\'.join(map(str, concatenated_row.values)) + '\n')
+                    f.write('<'.join(map(str, concatenated_row.values)) + '\n')
+                
 
 class BprTestData(Dataset):
     def __init__(self, data, cat_cols, user_cols, num_cols, topic_cols, tar_col, bert, max_padding_len, x_transforms):
