@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 
 from transformers import BertModel, BertTokenizer
 from evaluator import ACCURACY, CLASSIFICATION
 
 # import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 class Attention(nn.Module):
     def __init__(self, input_dim):
@@ -37,13 +37,14 @@ class BertAttBpr(nn.Module):
         self.user_cols_count = user_cols_count
         self.topic_num = topic_num
         self.device = device
+        self.bert = bert
 
         ## text input module
         # configuration = BertConfig.from_pretrained('bert-base-chinese', output_hidden_states=True, output_attentions=True)
         # configuration.hidden_dropout_prob = 0.8
         # configuration.attention_probs_dropout_prob = 0.8
         # self.title_bert = BertForSequenceClassification.from_pretrained('bert-base-chinese', config=configuration)
-        self.tokenizer = BertTokenizer.from_pretrained(bert)
+        self.tokenizer = BertTokenizer.from_pretrained(self.bert)
         self.title_bert = BertModel.from_pretrained(bert, output_attentions=True)
         self.bert_linear = nn.Sequential(
             nn.Linear(768, dim*2, bias=True),
@@ -138,7 +139,7 @@ class BertAttBpr(nn.Module):
             for i in range(self.cat_cols_count):
                 embed_rep = self.post_embedding_layer[i](non_text_input[:,self.num_cols_count+i].to(torch.int)) #batch*dim
                 cat_reps = torch.cat((cat_reps, embed_rep.unsqueeze(1)),dim=1)
-            cat_reps = cat_reps[:,1:,:] #batch*9*dim
+            cat_reps = cat_reps[:,1:,:] #batch*6*dim
             # print(cat_reps.shape)
         else:
             cat_reps = None
@@ -146,7 +147,7 @@ class BertAttBpr(nn.Module):
         #topic representation
         if self.topic_num>0:
             topic_rep = self.topic_layer(non_text_input[:,-self.topic_num:]).unsqueeze(1)
-            # print(topic_rep.shape)
+            # print(topic_rep.shape) #batch*1*dim
         else:
             topic_rep = None
 
@@ -182,8 +183,7 @@ class BertAttBpr(nn.Module):
 
         user_attentioned_rep, user_feature_att_score = self.user_attention_module(user_reps, self.task_embedding.expand(user_reps.shape[0], -1, -1))
 
-        scores = torch.bmm(user_attentioned_rep, post_attentioned_rep.transpose(1, 2)).squeeze()
-        # print(scores.shape)
+        scores = torch.sigmoid(torch.bmm(user_attentioned_rep, post_attentioned_rep.transpose(1, 2)).squeeze())
 
         feature_att_score = torch.cat((post_feature_att_score, user_feature_att_score), dim=1)
         # print(feature_att_score.shape)
@@ -198,7 +198,7 @@ class BertAttBpr(nn.Module):
         pos_data, neg_data = data
 
         #---for pos data
-        pos_text_input, pos_non_text_input, pos_user_input, _ = pos_data
+        pos_text_input, pos_non_text_input, pos_user_input = pos_data
 
         #load data to device
         pos_text_input = pos_text_input.to(self.device)
@@ -215,7 +215,7 @@ class BertAttBpr(nn.Module):
         neg_non_text_input = neg_non_text_input.to(self.device)
         neg_user_input = neg_user_input.to(self.device)
 
-        neg_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
+        neg_scores, _, _ = self.forward(neg_text_input, neg_non_text_input, neg_user_input)
 
         batch_loss = self.compute_loss(pos_scores, neg_scores)
             
@@ -224,36 +224,39 @@ class BertAttBpr(nn.Module):
     def compute_loss(self, pos_scores, neg_scores): ##BPR loss
 
         score_diff = pos_scores - neg_scores
+        # print(score_diff)
 
         # Compute the BPR loss
+        # print(pos_scores, neg_scores)
+        print(score_diff)
         loss = -torch.log(torch.sigmoid(score_diff)).sum()
 
         # Add L2 regularization
-        lambda_reg = 0.01
+        lambda_reg = 0
         reg_loss = lambda_reg * (torch.norm(pos_scores) + torch.norm(neg_scores))
 
         return loss + reg_loss
 
 
-    def eval(self, eval_data:DataLoader, device, explain=False):
+    def eval(self, eval_dataset, device, explain=False):
+        valid_data, test_data = eval_dataset
+
         with torch.no_grad():
+            ## compute validation loss
             eval_loss = 0
-            # metrics_vals = {type(k).__name__:torch.zeros(1).to(device) for k in self.evaluators}
-            metrics_vals = {}
-            preds, ys = torch.tensor([]), torch.tensor([])
-            y_pos_len, pos_preds = 0, torch.tensor([])
-            text, pos_feature_att_scores, pos_title_att_scores = [], torch.tensor([]).to(device), torch.tensor([]).to(device)
-            for _, (pos_data, neg_data) in enumerate(eval_data):
+            valid_data = tqdm(valid_data, leave=False)
+            valid_data.set_description("Evaluating model loss on validation set")
+            for _, (pos_data, neg_data) in enumerate(valid_data):
 
                 #---for pos data
-                pos_text_input, pos_non_text_input, pos_user_input, y = pos_data
+                pos_text_input, pos_non_text_input, pos_user_input = pos_data
 
                 #load data to device
                 pos_text_input = pos_text_input.to(self.device)
                 pos_non_text_input = pos_non_text_input.to(self.device)
                 pos_user_input = pos_user_input.to(self.device)
 
-                pos_scores, feature_att_score, title_att_score = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
+                pos_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
 
                 #---for neg data
                 neg_text_input, neg_non_text_input, neg_user_input = neg_data
@@ -263,78 +266,77 @@ class BertAttBpr(nn.Module):
                 neg_non_text_input = neg_non_text_input.to(self.device)
                 neg_user_input = neg_user_input.to(self.device)
 
-                neg_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_user_input)
+                neg_scores, _, _ = self.forward(neg_text_input, neg_non_text_input, neg_user_input)
 
                 eval_loss += self.compute_loss(pos_scores, neg_scores)
+            
+
+            ## compute test metrics
+            metrics_vals = {}
+            total_scores, ys = torch.tensor([]), torch.tensor([])
+            total_feature_att_scores, total_title_att_scores, total_text_input = torch.tensor([]).to(device), torch.tensor([]).to(device), torch.tensor([]).to(device)
+            text= []
+            test_data = tqdm(test_data, leave=False)
+            test_data.set_description("Testing model performance on test set")
+            for _, data in enumerate(test_data):
+                text_input, non_text_input, user_input, y = data
+                text_input = text_input.to(self.device)
+                non_text_input = non_text_input.to(self.device)
+                user_input = user_input.to(self.device)
 
                 ys = torch.cat((ys,y.cpu().detach()))
 
+                scores, feature_att_score, title_att_score = self.forward(text_input, non_text_input, user_input)
                 # Calculate the number of elements to set to 1
-                pos_scores = pos_scores.cpu().detach()
-                x_percent = 0.1
-                num_ones = int(y.shape[0] * x_percent)
+                scores = scores.cpu().detach()
 
-                # Sort the tensor in descending order
-                sorted_pred, _ = torch.sort(pos_scores, descending=True)
+                total_scores = torch.cat((total_scores, scores))
+                total_feature_att_scores = torch.cat((total_feature_att_scores, feature_att_score))
+                total_title_att_scores = torch.cat((total_title_att_scores, title_att_score))
+                total_text_input = torch.cat((total_text_input, text_input))
 
-                # Threshold the tensor
-                pred = torch.where(pos_scores >= sorted_pred[num_ones], torch.tensor(1.0), torch.tensor(0.0))
-                preds = torch.cat((preds, pred))
-                # print(ys, preds)
+            ## label data according to score
+            x_percent = 0.01
+            num_ones = int(ys.shape[0] * x_percent)
+            # Sort the tensor in descending order
+            sorted_pred, _ = torch.sort(total_scores, descending=True)
+            # Threshold the tensor
+            preds = torch.where(total_scores >= sorted_pred[num_ones], torch.tensor(1.0), torch.tensor(0.0))
+            print(f'total pred 1s: {preds.sum()}')
                 
-                if explain: #record attention scores for analysis
-                    y_pos_index = (y==1).nonzero().squeeze().cpu().detach()
-                    # print('---------')
-                    # print(y)
-                    # print(y_pos_index)
-                    # print(pred)
-                    if y_pos_index.nelement() > 0:
-                        y_pos_len += y_pos_index.nelement()
-                        # print(y_pos_index)
-                        # print(preds[y_pos_index])
-                        if y_pos_index.nelement()==1:
-                            y_pos_index = y_pos_index.unsqueeze(0)
+            if explain: #record attention scores for analysis
+                y_pos_index = (ys==1).nonzero()
+                if y_pos_index.nelement()==1:
+                    y_pos_index = y_pos_index.unsqueeze(0)
 
-                        pos_preds = torch.cat((pos_preds, pred[y_pos_index]))
-                        # print(pos_preds)
+                pos_preds = preds[y_pos_index]
+                # print(pos_preds)
 
-                        pos_feature_att_score = feature_att_score[y_pos_index]
-                        # print(pos_feature_att_score)
-                        pos_feature_att_scores = torch.cat((pos_feature_att_scores, pos_feature_att_score), 0)
-                        # print(pos_feature_att_scores)
-                        
-                        pos_title_att_score = title_att_score[y_pos_index]
-                        # print(pos_title_att_score)
-                        pos_title_att_scores = torch.cat((pos_title_att_scores, pos_title_att_score), 0)
-                        # print(pos_title_att_scores)
+                pos_feature_att_scores = total_feature_att_scores[y_pos_index]
+                
+                pos_title_att_scores = total_title_att_scores[y_pos_index]
 
-                        pos_text_token = pos_text_input[y_pos_index,0,:]
-                        tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
-                        for token in pos_text_token:
-                            text.append(tokenizer.decode(token))
-                        # print(text)
+                pos_text_token = total_text_input[y_pos_index,0,:]
+                tokenizer = BertTokenizer.from_pretrained(self.bert)
+                for sentence in pos_text_token:
+                    for token in sentence:
+                        text.append(tokenizer.decode(token))
 
             for e in self.evaluators:
                 metrics_vals[type(e).__name__] = e(ys, preds) #[1, task]
-
-            # print(y_pos_len)
-            # print(len(pos_preds))
-            # print(pos_title_att_scores.shape)
-            # print(len(text))
-            # print(pos_feature_att_scores.shape)
 
             #generate analysis report
             if explain and len(text)>0:
                 feature_list = ['text', 'sentiment', 'stock_code', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic', 'item_author', 'article_author', 'article_source']
                 report = pd.DataFrame({
                     'text': text,
-                    'pred': pos_preds,
+                    'pred': list(pos_preds),
                     'title_attention': list(pos_title_att_scores.cpu().detach().numpy()),
-                    'features': [feature_list]*y_pos_len,
+                    'features': [feature_list]*(y_pos_index.shape[0]),
                     'feature_attention': list(pos_feature_att_scores.cpu().detach().numpy())
                 })
             else:
                 print('no positive data, no report generated')
                 report = None
-
-            return eval_loss, metrics_vals, report
+            
+        return eval_loss, metrics_vals, report

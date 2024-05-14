@@ -7,6 +7,7 @@ from evaluator import ACCURACY, CLASSIFICATION
 
 # import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 class Attention(nn.Module):
     def __init__(self, input_dim):
@@ -239,7 +240,9 @@ class BertAtt(nn.Module):
             preds, ys = torch.tensor([]), torch.tensor([])
             y_pos_len, pos_preds = 0, torch.tensor([])
             text, pos_feature_att_scores, pos_title_att_scores = [], torch.tensor([]).to(device), torch.tensor([]).to(device)
-            for _, (x, y) in enumerate(eval_data):
+
+            eval_tqdm = tqdm(eval_data, leave=False)
+            for _, (x, y) in enumerate(eval_tqdm):
 
                 text_input, non_text_input = x
                 

@@ -95,14 +95,26 @@ if args.model=='Bert' or args.model=='BertAtt':
                     x_transforms=x_trans_list,\
                     y_transforms=y_trasn_list,
                     bert = args.bert)
+    gen = torch.Generator()
+    gen.manual_seed(666)
+    train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1], generator=gen) #train:valid:test = 8:1:1
+    # print(train_data[0][1])
+    # exit()                    
+
+    train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
+    valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
+    valid_dataset = valid_dataloader
+    test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)    
+    test_dataset = test_dataloader         
+                                                                                    
 elif args.model=='BertBpr':
     x_trans_list = [ToTensor()]
-    data = BprData(cat_cols = ['stock_code_index',
-                                'month_index', 
-                                'year_index', 
-                                'eastmoney_robo_journalism_index', 
-                                'media_robo_journalism_index', 
-                                'SMA_robo_journalism_index'],\
+    data = BprData(cat_cols = ['stock_code',
+                                    'month', 
+                                    'year', 
+                                    'eastmoney_robo_journalism', 
+                                    'media_robo_journalism', 
+                                    'SMA_robo_journalism'],\
                     num_cols=['sentiment_score'],\
                     topic_cols=['topics_val1',
                                 'topics_val2',
@@ -112,26 +124,23 @@ elif args.model=='BertBpr':
                                 'topics_val6',
                                 'topics_val7',
                                 'topics_val8'],\
-                    user_cols = ['item_author_cate_index', 
-                                 'article_author_index', 
-                                 'article_source_cate_index'],\
+                    user_cols = ['item_author_cate', 
+                                'article_author', 
+                                'article_source_cate'],\
                     tar_col = 'viral',
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,
                     bert = args.bert)
-else:
-    data = None #LR to be replaced
+                                                                   
+    train_data = data.train_data
+    valid_data = data.valid_data
+    test_data = data.test_data
 
-gen = torch.Generator()
-gen.manual_seed(666)
-train_data, valid_data, test_data = random_split(data, [0.8,0.1,0.1], generator=gen) #train:valid:test = 8:1:1
-# print(train_data[0][1])
-# exit()                                                                    
-                                                                                
-# For unbalanced dataset we create a weighted sampler
-train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True) 
-valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
-test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
+    train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
+    valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
+    test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
+    valid_dataset = test_dataset = (valid_dataloader, test_dataloader)
+
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
 
 
@@ -209,13 +218,15 @@ if args.mode=="test":
     print("-"*10 + "Start testing" + "-"*10)
     time_s = time.time()
     
-    t_batch = tqdm(test_dataloader, leave=False)
-    test_loss, metrics, report = model.eval(t_batch, device, explain=True)
+    test_loss, metrics, report = model.eval(test_dataset, device, explain=True)
 
     # print result
-    print(f"AVG TEST LOSS: {test_loss/len(t_batch)}")
+    print(f"AVG TEST LOSS: {test_loss/len(test_dataloader)}")
     for e, val in metrics.items():
         print(f"AVG SCORE for {e}: {val}")
+
+    if report is not None:
+        report.to_csv(f"./analysis/test_{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.csv")
     
     print(f"evalution time {time.time()-time_s}s")
     print("="*10 + "END PROGRAM" + "="*10)
@@ -239,13 +250,13 @@ elif args.mode=="train":
         t_epoch.refresh()
         epoch_loss = 0 #reset epoch loss for current epoch training
         
-        t_batch = tqdm(train_dataloader, leave=False)
         batch_loss = 0
-        for batch, batch_data in enumerate(t_batch):
+        batch_tqdm = tqdm(train_dataloader, leave=False)
+        for batch, batch_data in enumerate(batch_tqdm):
 
             # record batch_loss
-            t_batch.set_description(f"Batch {batch} - batch loss {batch_loss}")
-            t_batch.refresh()
+            batch_tqdm.set_description(f"Batch {batch} - batch loss {batch_loss}")
+            batch_tqdm.refresh()
             # logging.info(f"Batch {batch} - avg loss {batch_loss}\n")
             
             batch_loss = model.train(batch_data)
@@ -261,9 +272,8 @@ elif args.mode=="train":
             time.sleep(0.01)
 
         # eavluate on test data
-        t_batch.set_description(f"Epoch {epoch} evaluation:")
-        t_batch = tqdm(valid_dataloader, leave=False)
-        valid_loss, metrics, report = model.eval(t_batch, device, explain=True)
+        batch_tqdm.set_description(f"Epoch {epoch} evaluation:")
+        valid_loss, metrics, report = model.eval(valid_dataset, device, explain=True)
         for e, val in metrics.items():
             print(f"AVG SCORE for {e}: {val}")
 
