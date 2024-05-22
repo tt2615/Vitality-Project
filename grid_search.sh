@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define parameter ranges
-dims=(50 100 150 200 250)
+dims=(100 150 200 250)
 lrs=(0.001 5e-4 1e-4 5e-5)
 batches=(64 32 16 4)
 
@@ -14,4 +14,4 @@ for dim in "${dims[@]}"; do
             echo "---------------------------------------------------"
         done
     done
-done
+done 
