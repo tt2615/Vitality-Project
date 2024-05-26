@@ -76,7 +76,6 @@ if args.model=='Bert' or args.model=='BertAtt':
                                 'article_author', 
                                 'article_source_cate', 
                                 'month', 
-                                'year', 
                                 'eastmoney_robo_journalism', 
                                 'media_robo_journalism', 
                                 'SMA_robo_journalism'],\
@@ -111,7 +110,6 @@ elif args.model=='BertBpr':
     x_trans_list = [ToTensor()]
     data = BprData(cat_cols = ['stock_code',
                                     'month', 
-                                    'year', 
                                     'eastmoney_robo_journalism', 
                                     'media_robo_journalism', 
                                     'SMA_robo_journalism'],\
