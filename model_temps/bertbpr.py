@@ -105,10 +105,9 @@ class BertAttBpr(nn.Module):
 
         """
         Non-text-input:
-            stock_code_index                         52
             sentiment_score                    0.200904
+            stock_code_index                         52
             month_index                               5
-            year_index                                4
             eastmoney_robo_journalism_index           1
             media_robo_journalism_index               1
             SMA_robo_journalism_index                 1
@@ -116,10 +115,7 @@ class BertAttBpr(nn.Module):
             topics_val2                        0.012623
             topics_val3                        0.012636
             topics_val4                        0.214114
-            topics_val5                        0.225046
-            topics_val6                        0.012619
-            topics_val7                        0.122692
-            topics_val8                        0.387651    
+            topics_val5                        0.225046 
         """
 
         # #num representation
@@ -224,7 +220,6 @@ class BertAttBpr(nn.Module):
     def compute_loss(self, pos_scores, neg_scores): ##BPR loss
 
         score_diff = pos_scores - neg_scores
-        # print(score_diff)
 
         # Compute the BPR loss
         # print(pos_scores, neg_scores)
@@ -327,7 +322,7 @@ class BertAttBpr(nn.Module):
 
             #generate analysis report
             if explain and len(text)>0:
-                feature_list = ['text', 'sentiment', 'stock_code', 'month', 'year', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic', 'item_author', 'article_author', 'article_source']
+                feature_list = ['text', 'sentiment', 'stock_code', 'month', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic', 'item_author', 'article_author', 'article_source']
                 report = pd.DataFrame({
                     'text': text,
                     'pred': list(pos_preds),

@@ -17,9 +17,9 @@ class BprData():
         self.data = pd.read_csv(dir, nrows=64000)
         # print(self.data.dtypes)
 
-        # Drop the specified columns from the DataFrame
-        columns_to_exclude = ['cut_titles','topics','dominant_topic','topics_val']  # Add the names of the columns you want to exclude
-        self.data = self.data.drop(columns=columns_to_exclude)
+        # # Drop the specified columns from the DataFrame
+        # columns_to_exclude = []  # Add the names of the columns you want to exclude
+        # self.data = self.data.drop(columns=columns_to_exclude)
 
         gen = torch.Generator()
         gen.manual_seed(666)
@@ -204,7 +204,7 @@ class BprSampledData(Dataset):
         null_count = 0
 
         # Open the output file
-        with open(dir, 'w') as f:
+        with open(dir, 'w', encoding='UTF-8') as f:
             first_line = True
 
             # Iterate over each positive row
@@ -224,7 +224,7 @@ class BprSampledData(Dataset):
                     null_count+=1
 
                 elif len(negative_rows)==1:
-                    neg_samples = negative_rows
+                    neg_samples = negative_rows.iloc[0]
                     concatenated_row = pd.concat([positive_row, neg_samples.add_prefix('neg_')])
                     if first_line:
                         f.write('<'.join(map(str, concatenated_row.keys()))+'\n')
@@ -234,13 +234,12 @@ class BprSampledData(Dataset):
                     f.write('<'.join(map(str, concatenated_row.values)) + '\n')
                     continue
 
-
                 elif 1<len(negative_rows)<=neg_sample_num:
                     # Take the first negative row
                     neg_samples = negative_rows
                 
                 elif len(negative_rows)>neg_sample_num:
-                    # Take the first negative row
+                    # Take all negative rows
                     neg_samples = negative_rows.sample(n=neg_sample_num, replace=False)
                 
                 # Iterate over each sampled negative row
@@ -299,7 +298,6 @@ class BprTestData(Dataset):
         non_text_input = record[self.num_cols+self.cat_cols+self.topic_cols].astype(np.float32)
         user_input = record[self.user_cols].astype(np.float32)
         y = record[self.tar_col]
-        # print(pos_non_text_input)
 
         if self.x_trans_list:
             for trsfm in self.x_trans_list:

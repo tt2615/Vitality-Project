@@ -85,10 +85,7 @@ if args.model=='Bert' or args.model=='BertAtt':
                                 'topics_val2',
                                 'topics_val3',
                                 'topics_val4',
-                                'topics_val5',
-                                'topics_val6',
-                                'topics_val7',
-                                'topics_val8'],\
+                                'topics_val5'],\
                     tar_cols=['viral'],\
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,\
@@ -109,19 +106,16 @@ if args.model=='Bert' or args.model=='BertAtt':
 elif args.model=='BertBpr':
     x_trans_list = [ToTensor()]
     data = BprData(cat_cols = ['stock_code',
-                                    'month', 
-                                    'eastmoney_robo_journalism', 
-                                    'media_robo_journalism', 
-                                    'SMA_robo_journalism'],\
+                                'month', 
+                                'eastmoney_robo_journalism', 
+                                'media_robo_journalism', 
+                                'SMA_robo_journalism'],\
                     num_cols=['sentiment_score'],\
                     topic_cols=['topics_val1',
                                 'topics_val2',
                                 'topics_val3',
                                 'topics_val4',
-                                'topics_val5',
-                                'topics_val6',
-                                'topics_val7',
-                                'topics_val8'],\
+                                'topics_val5',],\
                     user_cols = ['item_author_cate', 
                                 'article_author', 
                                 'article_source_cate'],\
@@ -267,7 +261,7 @@ elif args.mode=="train":
             optimizer.step()
             # torch.nn.utils.clip_grad_norm(parameters=model.parameters(), max_norm=10, norm_type=2.0)
 
-            time.sleep(0.01)
+            # time.sleep(0.01)
 
         # eavluate on test data
         batch_tqdm.set_description(f"Epoch {epoch} evaluation:")

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Define parameter ranges
-dims=(200 250)
-lrs=(5e-4 1e-4 5e-5)
+dims=(100 150 200 250)
+lrs=(1e-3 5e-4 1e-4 5e-5)
 batches=(64 32 16 4)
 
 # Iterate through parameter combinations
