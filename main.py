@@ -135,10 +135,10 @@ elif args.model=='BertBpr':
 
 elif args.model=='BertBpr_v2':
     x_trans_list = [ToTensor()]
-    data = BprData(dir='./data/eastmoney_bert_ind.csv',
+    data = BprData(dir='./data/eastmoney_bert_v3.csv',
                     cat_cols = ['month', 
                                'IndustryCode1',
-                               'IndustryCode2'
+                               'IndustryCode2',
                                 ],\
                     num_cols=['sentiment_score'],\
                     topic_cols=['topics_val1',
@@ -148,7 +148,10 @@ elif args.model=='BertBpr_v2':
                                 'topics_val5',],\
                     user_cols = ['eastmoney_robo_journalism', 
                                 'media_robo_journalism', 
-                                'SMA_robo_journalism'],\
+                                'SMA_robo_journalism',
+                               'item_author_reduced',
+                               'article_author_reduced',
+                               'article_source_reduced'],\
                     tar_col = 'viral',
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,
