@@ -1,3 +1,18 @@
+v1
 0.41 BertBpr_16_0.0001_200; BertBpr_16_0.0005_250; BertBpr_64_0.0001_250; BertBpr_64_0.0005_150
 0.43 BertBpr_16_5e-05_200
 0.45 BertBpr_4_5e-05_150
+
+v2
+
+v3
+0.31 BertBpr_v2_64_5e-05_250_Adam_grid3.log
+0.29 BertBpr_v2_64_0.0001_200_Adam_grid3.log
+0.30 BertBpr_v2_4_5e-05_200_Adam_grid3.log
+0.32 BertBpr_v2_32_5e-05_250_Adam_grid3.log
+0.31 BertBpr_v2_32_0.0005_50_Adam_grid3.log
+0.30 BertBpr_v2_32_0.0001_250_Adam_grid3.log
+0.36 BertBpr_v2_16_5e-05_250_Adam_grid3.log
+0.30 BertBpr_v2_16_5e-05_200_Adam_grid3.log
+0.30 BertBpr_v2_16_0.0001_250_Adam_grid3.log
+0.32 BertBpr_v2_16_0.0001_200_Adam_grid3.log

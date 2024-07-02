@@ -14,7 +14,7 @@ class BprData():
     def __init__(self, cat_cols=[], num_cols=[], topic_cols=[], user_cols=[], tar_col='viral', dir="./data/eastmoney_bert.csv", max_padding_len=32, x_transforms=None, bert='bert-base-chinese'):
 
         #load data
-        self.data = pd.read_csv(dir, nrows=64000)
+        self.data = pd.read_csv(dir)
         # print(self.data.dtypes)
 
         # # Drop the specified columns from the DataFrame
