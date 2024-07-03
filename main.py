@@ -8,7 +8,6 @@ from model_temps.llr import LLR
 from model_temps.bert import Bert
 from model_temps.bertatt import BertAtt
 from model_temps.bertbpr import BertAttBpr
-from evaluator import ACCURACY, CLASSIFICATION
 
 import torch
 import atexit

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from transformers import BertModel, BertTokenizer
-from evaluator import ACCURACY, CLASSIFICATION
+from evaluator import ACCURACY, CLASSIFICATION, NDCG
 
 # import numpy as np
 import pandas as pd
@@ -86,7 +86,7 @@ class BertAttBpr(nn.Module):
             self.user_embedding_layer.append(nn.Embedding(user_unique_count[i], dim))
 
         # define evaluator
-        self.evaluators = [ACCURACY(), CLASSIFICATION()]
+        self.evaluators = [ACCURACY(), CLASSIFICATION(), NDCG(1), NDCG(5), NDCG(10), NDCG(-1)]
 
     def forward(self, text_input, non_text_input, user_input):
         ## news representation
@@ -318,7 +318,7 @@ class BertAttBpr(nn.Module):
                         text.append(tokenizer.decode(token))
 
             for e in self.evaluators:
-                metrics_vals[type(e).__name__] = e(ys, preds) #[1, task]
+                metrics_vals[repr(e)] = e(ys, preds) #[1, task]
 
             #generate analysis report
             if explain and len(text)>0:

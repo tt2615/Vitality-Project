@@ -1,6 +1,6 @@
 import torch
 
-from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, f1_score, classification_report
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, f1_score, classification_report, ndcg_score
 
 class R2_SCORE:
     def __call__(self, y, y_pred, *args):
@@ -72,3 +72,33 @@ class F1:
         y, y_pred = y.cpu(), y_pred.cpu()
         f1 = f1_score(y, y_pred)
         return f1
+
+
+class NDCG:
+    def __init__(self, k):
+        self.k = k
+
+    def __call__(self, y, y_pred, *args):
+        y, y_pred = y.cpu().unsqueeze(0), y_pred.cpu().unsqueeze(0)
+        if self.k!=-1:
+            ndcg = ndcg_score(y, y_pred, k=self.k)
+        else:
+            ndcg = ndcg_score(y, y_pred)
+        return ndcg
+    
+    def __repr__(self) -> str:
+        if self.k != -1:
+            return f"NDCG@{self.k}"
+        else:
+            return f"NDCG"
+    
+
+# def ndcg_factory(k) :
+#     class NDCGATK(NDCG): 
+#         def __call__(self, y, y_pred, k, *args):
+#             y, y_pred = y.cpu().unsqueeze(0), y_pred.cpu().unsqueeze(0)
+#             ndcg = ndcg_score(y, y_pred, k)
+#             return ndcg
+        
+#     NDCGATK.__name__ = f"NDCG@{k}"
+#     return NDCGATK
