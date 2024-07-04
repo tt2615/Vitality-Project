@@ -135,7 +135,11 @@ elif args.model=='BertBpr':
 elif args.model=='BertBpr_v2':
     x_trans_list = [ToTensor()]
     data = BprData(dir='./data/eastmoney_bert_v3.csv',
-                    cat_cols = ['month', 
+                    cat_cols = ['stock_code',
+                                'item_author_cate', 
+                                'article_author', 
+                                'article_source_cate',
+                                'month', 
                                'IndustryCode1',
                                'IndustryCode2',
                                 ],\
@@ -164,6 +168,7 @@ elif args.model=='BertBpr_v2':
     valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
     test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
     valid_dataset = test_dataset = (valid_dataloader, test_dataloader)
+    
 
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
 

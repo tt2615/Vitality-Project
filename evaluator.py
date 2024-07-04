@@ -49,11 +49,17 @@ class ACCURACY:
         accuracy = accuracy_score(y, y_pred)
         return accuracy
     
+    def __repr__(self) -> str:
+        return "ACCURACY"
+    
 class CLASSIFICATION:
     def __call__(self, y, y_pred, *args):
         y, y_pred = y.cpu(), y_pred.cpu()
         c_report = classification_report(y,y_pred)
         return c_report
+
+    def __repr__(self) -> str:
+        return "CLASSIFICATION"
 
 class RECALL:
     def __call__(self, y, y_pred, *args):

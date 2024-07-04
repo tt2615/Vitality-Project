@@ -265,6 +265,11 @@ class BprTestData(Dataset):
         self.topic_cols = topic_cols
         self.tar_col = tar_col
 
+        #save test data for other model comparison
+        dir = './data/eastmoney_bpr_test.csv'
+        if not exists(dir):
+            self.data.to_csv(dir, index=False)
+
         # process text data: for bert input 
         tokenizer = BertTokenizer.from_pretrained(bert)
         input_ids = []
@@ -287,6 +292,8 @@ class BprTestData(Dataset):
         self.text_cols=['title_id', 'title_mask']
 
         self.x_trans_list = x_transforms
+        
+        
 
     def __len__(self):
         return len(self.data)
