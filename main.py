@@ -104,7 +104,8 @@ if args.model=='Bert' or args.model=='BertAtt':
                                                                                     
 elif args.model=='BertBpr':
     x_trans_list = [ToTensor()]
-    data = BprData(cat_cols = ['month', 
+    data = BprData(dir='./data/eastmoney_bert_ind_reduce.csv',
+                   cat_cols = ['month', 
                                 'stock_code',
                                 ],\
                     num_cols=['sentiment_score'],\

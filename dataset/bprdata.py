@@ -13,7 +13,7 @@ from transformers import BertTokenizer
 class BprData():
     def __init__(self, cat_cols=[], num_cols=[], topic_cols=[], user_cols=[], tar_col='viral', dir="./data/eastmoney_bert.csv", max_padding_len=32, x_transforms=None, bert='bert-base-chinese'):
         
-        self.data = pd.read_csv(dir)
+        self.data = pd.read_csv(dir, encoding='utf-8')
         self.cat_cols = cat_cols
         self.user_cols = user_cols
         self.num_cols = num_cols
@@ -51,9 +51,9 @@ class BprData():
             valid_data.dataset.to_csv(valid_dir, index=False, encoding="utf-8")
             test_data.dataset.to_csv(test_dir, index=False, encoding="utf-8")
 
-        train_data = pd.read_csv(train_dir)
-        valid_data = pd.read_csv(valid_dir)
-        test_data = pd.read_csv(test_dir)
+        train_data = pd.read_csv(train_dir, encoding='utf-8')
+        valid_data = pd.read_csv(valid_dir, encoding='utf-8')
+        test_data = pd.read_csv(test_dir, encoding='utf-8')
 
         # negative sample data
         self.train_data = BprSampledData(train_data, 
@@ -115,7 +115,7 @@ class BprSampledData(Dataset):
     def __init__(self, data, dir, cat_cols, user_cols, num_cols, topic_cols, bert, max_padding_len, x_transforms):
         
         if not exists(dir):
-            self.form_bpr_train_data(data, dir, encoding="utf-8")
+            self.form_bpr_train_data(data, dir)
         self.data = pd.read_csv(dir, delimiter='<')
 
         # print(self.data.columns)
@@ -216,7 +216,7 @@ class BprSampledData(Dataset):
         null_count = 0
 
         # Open the output file
-        with open(dir, 'w', encoding='UTF-8') as f:
+        with open(dir, 'w', encoding='utf-8') as f:
             first_line = True
 
             # Iterate over each positive row
