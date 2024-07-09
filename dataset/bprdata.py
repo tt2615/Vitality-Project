@@ -47,9 +47,9 @@ class BprData():
             train_data, valid_data, test_data = random_split(self.data, [0.8,0.1,0.1], generator=gen) #train:valid:test = 8:1:1
             
             #save test data for other model comparison
-            train_data.dataset.to_csv(train_dir, index=False)
-            valid_data.dataset.to_csv(valid_dir, index=False)
-            test_data.dataset.to_csv(test_dir, index=False)
+            train_data.dataset.to_csv(train_dir, index=False, encoding="utf-8")
+            valid_data.dataset.to_csv(valid_dir, index=False, encoding="utf-8")
+            test_data.dataset.to_csv(test_dir, index=False, encoding="utf-8")
 
         train_data = pd.read_csv(train_dir)
         valid_data = pd.read_csv(valid_dir)
@@ -115,7 +115,7 @@ class BprSampledData(Dataset):
     def __init__(self, data, dir, cat_cols, user_cols, num_cols, topic_cols, bert, max_padding_len, x_transforms):
         
         if not exists(dir):
-            self.form_bpr_train_data(data, dir)
+            self.form_bpr_train_data(data, dir, encoding="utf-8")
         self.data = pd.read_csv(dir, delimiter='<')
 
         # print(self.data.columns)
