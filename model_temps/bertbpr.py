@@ -105,17 +105,12 @@ class BertAttBpr(nn.Module):
 
         """
         Non-text-input:
-            sentiment_score                    0.200904
-            stock_code_index                         52
-            month_index                               5
-            eastmoney_robo_journalism_index           1
-            media_robo_journalism_index               1
-            SMA_robo_journalism_index                 1
-            topics_val1                        0.012618
-            topics_val2                        0.012623
-            topics_val3                        0.012636
-            topics_val4                        0.214114
-            topics_val5                        0.225046 
+            "title"
+            "sentiment_score"
+            'month'
+            'IndustryCode1'
+            'IndustryCode2'
+            'topic'
         """
 
         # #num representation
@@ -166,9 +161,12 @@ class BertAttBpr(nn.Module):
 
         ## user representation
         """
-            item_author_cate_index                    2
-            article_author_index                      1
-            article_source_cate_index                 1
+            'eastmoney_robo_journalism', 
+            'media_robo_journalism', 
+            'SMA_robo_journalism',
+            'item_author_reduced',
+            'article_author_reduced',
+            'article_source_reduced'
         """
         user_reps = torch.zeros((user_input.shape[0],1,self.dim)).to(self.device)
         for i in range(self.user_cols_count):
@@ -270,7 +268,7 @@ class BertAttBpr(nn.Module):
             metrics_vals = {}
             total_scores, ys = torch.tensor([]), torch.tensor([])
             total_feature_att_scores, total_title_att_scores, total_text_input = torch.tensor([]).to(device), torch.tensor([]).to(device), torch.tensor([]).to(device)
-            text= []
+
             test_data = tqdm(test_data, leave=False)
             test_data.set_description("Testing model performance on test set")
             for _, data in enumerate(test_data):
@@ -279,12 +277,13 @@ class BertAttBpr(nn.Module):
                 non_text_input = non_text_input.to(self.device)
                 user_input = user_input.to(self.device)
 
-                ys = torch.cat((ys,y.cpu().detach()))
+                ys = torch.cat((ys, y.cpu().detach()))
 
                 scores, feature_att_score, title_att_score = self.forward(text_input, non_text_input, user_input)
                 # Calculate the number of elements to set to 1
                 scores = scores.cpu().detach()
 
+                # record info in each batch
                 total_scores = torch.cat((total_scores, scores))
                 total_feature_att_scores = torch.cat((total_feature_att_scores, feature_att_score))
                 total_title_att_scores = torch.cat((total_title_att_scores, title_att_score))
@@ -298,40 +297,41 @@ class BertAttBpr(nn.Module):
             # Threshold the tensor
             preds = torch.where(total_scores >= sorted_pred[num_ones], torch.tensor(1.0), torch.tensor(0.0))
             print(f'total pred 1s: {preds.sum()}')
-                
-            if explain: #record attention scores for analysis
-                y_pos_index = (ys==1).nonzero()
-                if y_pos_index.nelement()==1:
-                    y_pos_index = y_pos_index.unsqueeze(0)
-
-                pos_preds = preds[y_pos_index]
-                # print(pos_preds)
-
-                pos_feature_att_scores = total_feature_att_scores[y_pos_index]
-                
-                pos_title_att_scores = total_title_att_scores[y_pos_index]
-
-                pos_text_token = total_text_input[y_pos_index,0,:]
-                tokenizer = BertTokenizer.from_pretrained(self.bert)
-                for sentence in pos_text_token:
-                    for token in sentence:
-                        text.append(tokenizer.decode(token))
 
             for e in self.evaluators:
                 metrics_vals[repr(e)] = e(ys, preds) #[1, task]
+                
 
-            #generate analysis report
-            if explain and len(text)>0:
-                feature_list = ['text', 'sentiment', 'stock_code', 'month', 'eastmoney_robo_journalism', 'media_robo_journalism', 'SMA_robo_journalism', 'topic', 'item_author', 'article_author', 'article_source']
-                report = pd.DataFrame({
-                    'text': text,
-                    'pred': list(pos_preds),
-                    'title_attention': list(pos_title_att_scores.cpu().detach().numpy()),
-                    'features': [feature_list]*(y_pos_index.shape[0]),
-                    'feature_attention': list(pos_feature_att_scores.cpu().detach().numpy())
-                })
-            else:
-                print('no positive data, no report generated')
-                report = None
+        if explain: #record attention scores for analysis
+
+            # recover text
+            tokenizer = BertTokenizer.from_pretrained(self.bert)
+            total_title= []
+            for token in total_text_input[:,0,:]:
+                total_title.append(tokenizer.decode(token))
+
+            feature_list = [
+                "title",
+                "sentiment_score",
+                'month',
+                'IndustryCode1',
+                'IndustryCode2',
+                'topic',
+                'eastmoney_robo_journalism',
+                'media_robo_journalism', 
+                'SMA_robo_journalism',
+                'item_author_reduced',
+                'article_author_reduced',
+                'article_source_reduced'
+            ]
+
+            report = pd.DataFrame({
+                'text': total_title,
+                'pred': preds,
+                'viral': ys,
+                'title_attention': list(total_title_att_scores.cpu().detach().numpy()),
+                'features': [feature_list]*(len(total_title)),
+                'feature_attention': list(total_feature_att_scores.cpu().detach().numpy())
+            })
             
         return eval_loss, metrics_vals, report

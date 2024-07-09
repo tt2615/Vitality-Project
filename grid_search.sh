@@ -10,7 +10,7 @@ for dim in "${dims[@]}"; do
     for lr in "${lrs[@]}"; do
         for batch in "${batches[@]}"; do
             echo "Running with dim=$dim, lr=$lr, batch=$batch"
-            python main.py --model=BertBpr --device=cuda --comment=grid_ndcg --dim=$dim --lr=$lr --batch=$batch
+            python main.py --model=BertBpr_v2 --device=cuda --comment=v2_final --dim=$dim --lr=$lr --batch=$batch
             echo "---------------------------------------------------"
         done
     done
