@@ -52,8 +52,6 @@ class BprData():
             test_data.dataset.iloc[test_data.indices].to_csv(test_dir, index=False, encoding="utf-8")
 
         train_data = pd.read_csv(train_dir, encoding='utf-8')
-        valid_data = pd.read_csv(valid_dir, encoding='utf-8')
-        test_data = pd.read_csv(test_dir, encoding='utf-8')
 
         # negative sample data
         self.train_data = BprSampledData(train_data, 
@@ -65,6 +63,9 @@ class BprData():
                                         bert, 
                                         max_padding_len,
                                         x_transforms)
+        
+        valid_data = pd.read_csv(valid_dir, encoding='utf-8')
+        
         self.valid_data = BprSampledData(valid_data,
                                         valid_bpr_dir,
                                         self.cat_cols,
@@ -74,6 +75,9 @@ class BprData():
                                         bert,
                                         max_padding_len,
                                         x_transforms)
+        
+        test_data = pd.read_csv(test_dir, encoding='utf-8')
+        
         self.test_data = BprTestData(test_data, 
                                     self.cat_cols, 
                                     self.user_cols, 
