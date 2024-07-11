@@ -47,9 +47,9 @@ class BprData():
             train_data, valid_data, test_data = random_split(self.data, [0.8,0.1,0.1], generator=gen) #train:valid:test = 8:1:1
             
             #save test data for other model comparison
-            train_data.dataset.to_csv(train_dir, index=False, encoding="utf-8")
-            valid_data.dataset.to_csv(valid_dir, index=False, encoding="utf-8")
-            test_data.dataset.to_csv(test_dir, index=False, encoding="utf-8")
+            train_data.dataset.iloc[train_data.indices].to_csv(train_dir, index=False, encoding="utf-8")
+            valid_data.dataset.iloc[valid_data.indices].to_csv(valid_dir, index=False, encoding="utf-8")
+            test_data.dataset.iloc[test_data.indices].to_csv(test_dir, index=False, encoding="utf-8")
 
         train_data = pd.read_csv(train_dir, encoding='utf-8')
         valid_data = pd.read_csv(valid_dir, encoding='utf-8')
@@ -74,7 +74,6 @@ class BprData():
                                         bert,
                                         max_padding_len,
                                         x_transforms)
-        print(self.valid_data)
         self.test_data = BprTestData(test_data, 
                                     self.cat_cols, 
                                     self.user_cols, 
@@ -116,7 +115,7 @@ class BprSampledData(Dataset):
         
         if not exists(dir):
             self.form_bpr_train_data(data, dir)
-        self.data = pd.read_csv(dir, delimiter='<')
+        self.data = pd.read_csv(dir, delimiter='<', encoding='utf-8')
 
         # print(self.data.columns)
 
@@ -130,7 +129,8 @@ class BprSampledData(Dataset):
         tokenizer = BertTokenizer.from_pretrained(bert)
         input_ids = []
         attention_masks = []
-        for text in self.data['item_title']:
+        print("encode pos data titles")
+        for text in tqdm(self.data['item_title'], total=self.data.shape[0]):
             encoded_dict = tokenizer.encode_plus(text,
                                                 add_special_tokens=True,
                                                 max_length=max_padding_len,
@@ -151,7 +151,8 @@ class BprSampledData(Dataset):
         # process text data: for bert input 
         neg_input_ids = []
         neg_attention_masks = []
-        for text in self.data['item_title']:
+        print("encode neg data titles")
+        for text in tqdm(self.data['neg_item_title'], total=self.data.shape[0]):
             encoded_dict = tokenizer.encode_plus(text,
                                                 add_special_tokens=True,
                                                 max_length=max_padding_len,
@@ -163,8 +164,8 @@ class BprSampledData(Dataset):
             neg_attention_masks.append(np.array(encoded_dict['attention_mask'].squeeze()))
             # print(text)
             # print(encoded_dict['input_ids'])
-        self.data['neg_title_id'] = input_ids
-        self.data['neg_title_mask'] = attention_masks
+        self.data['neg_title_id'] = neg_input_ids
+        self.data['neg_title_mask'] = neg_attention_masks
         self.neg_text_cols=['neg_title_id', 'neg_title_mask']
 
         self.neg_cat_cols = ['neg_'+x for x in cat_cols]    
@@ -173,6 +174,8 @@ class BprSampledData(Dataset):
         self.neg_topic_cols = ['neg_'+x for x in topic_cols]
 
         self.x_trans_list = x_transforms
+
+        print(f"loaded bpr data from {dir}")
 
     def __len__(self):
         return len(self.data)
@@ -209,7 +212,7 @@ class BprSampledData(Dataset):
         return (pos_text_input, pos_non_text_input, pos_user_input), (neg_text_input, neg_non_text_input, neg_user_input)
 
     def form_bpr_train_data(self, data, dir):
-        print(f"form bpr sampled data to :{dir}")
+        print(f"sample negative bpr data and save to {dir}")
         positive_rows = data[data['viral'] == 1]
 
         neg_sample_num = 100
@@ -281,7 +284,8 @@ class BprTestData(Dataset):
         tokenizer = BertTokenizer.from_pretrained(bert)
         input_ids = []
         attention_masks = []
-        for text in self.data['item_title']:
+        print("encode test data titles")
+        for text in tqdm(self.data['item_title'], total=self.data.shape[0]):
             encoded_dict = tokenizer.encode_plus(text,
                                                 add_special_tokens=True,
                                                 max_length=max_padding_len,
