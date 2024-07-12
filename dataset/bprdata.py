@@ -219,7 +219,7 @@ class BprSampledData(Dataset):
         print(f"sample negative bpr data and save to {dir}")
         positive_rows = data[data['viral'] == 1]
 
-        neg_sample_num = 100
+        neg_sample_num = 10
         null_count = 0
 
         # Open the output file
