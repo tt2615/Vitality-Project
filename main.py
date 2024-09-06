@@ -31,7 +31,7 @@ torch.mps.manual_seed(seed)
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', choices=['LR', 'LLR', 'Bert', 'BertAtt', 'BertBpr','BertBpr_v2'], help="MTL model", required=True)
+parser.add_argument('--model', choices=['LR', 'LLR', 'Bert', 'BertAtt', 'BertBpr','BertBpr_v2','BertBpr_datagen'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', type=str, default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
@@ -104,11 +104,10 @@ if args.model=='Bert' or args.model=='BertAtt':
                                                                                     
 elif args.model=='BertBpr':
     x_trans_list = [ToTensor()]
-    data = BprData(cat_cols = ['stock_code',
-                                'month', 
-                                'eastmoney_robo_journalism', 
-                                'media_robo_journalism', 
-                                'SMA_robo_journalism'],\
+    data = BprData(dir='./data/eastmoney_bert_ind_reduce.csv',
+                   cat_cols = ['month', 
+                                'stock_code',
+                                ],\
                     num_cols=['sentiment_score'],\
                     topic_cols=['topics_val1',
                                 'topics_val2',
@@ -117,7 +116,10 @@ elif args.model=='BertBpr':
                                 'topics_val5',],\
                     user_cols = ['item_author_cate', 
                                 'article_author', 
-                                'article_source_cate'],\
+                                'article_source_cate',
+                                'eastmoney_robo_journalism', 
+                                'media_robo_journalism', 
+                                'SMA_robo_journalism'],\
                     tar_col = 'viral',
                     max_padding_len=args.pad_len,
                     x_transforms=x_trans_list,
@@ -134,14 +136,10 @@ elif args.model=='BertBpr':
 
 elif args.model=='BertBpr_v2':
     x_trans_list = [ToTensor()]
-    data = BprData(dir='./data/eastmoney_bert_v3.csv',
-                    cat_cols = ['stock_code',
-                                'item_author_cate', 
-                                'article_author', 
-                                'article_source_cate',
-                                'month', 
-                               'IndustryCode1',
-                               'IndustryCode2',
+    data = BprData(dir='./data/eastmoney_bert_ind_reduce.csv',
+                    cat_cols = ['month', 
+                                'IndustryCode1',
+                                'IndustryCode2',
                                 ],\
                     num_cols=['sentiment_score'],\
                     topic_cols=['topics_val1',
@@ -168,7 +166,45 @@ elif args.model=='BertBpr_v2':
     valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
     test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
     valid_dataset = test_dataset = (valid_dataloader, test_dataloader)
+
+elif args.model=='BertBpr_datagen': ##For data generation only
+    x_trans_list = [ToTensor()]
+    data = BprData(dir='./data/eastmoney_bert_ind_reduce.csv',
+                    cat_cols = ['stock_code',
+                                'item_author_cate', 
+                                'article_author', 
+                                'article_source_cate',
+                                'month', 
+                                'IndustryCode1',
+                                'IndustryCode2',
+                                ],\
+                    num_cols=['sentiment_score'],\
+                    topic_cols=['topics_val1',
+                                'topics_val2',
+                                'topics_val3',
+                                'topics_val4',
+                                'topics_val5',],\
+                    user_cols = ['eastmoney_robo_journalism', 
+                                'media_robo_journalism', 
+                                'SMA_robo_journalism',
+                               'item_author_reduced',
+                               'article_author_reduced',
+                               'article_source_reduced'],\
+                    tar_col = 'viral',
+                    max_padding_len=args.pad_len,
+                    x_transforms=x_trans_list,
+                    bert = args.bert)
+                                                                   
+    train_data = data.train_data
+    valid_data = data.valid_data
+    test_data = data.test_data
+
+    train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
+    valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True)
+    test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
     
+    print(f"Data Generation complete. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)} \n Exit Program...")
+    exit()
 
 print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
 
