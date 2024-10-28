@@ -143,3 +143,6 @@ att_results/
 analysis/
 
 .DS_store
+# lda
+lda/eastmoney_topic.csv
+lda/lda_model.gensim
