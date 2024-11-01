@@ -144,5 +144,5 @@ analysis/
 
 .DS_store
 # lda
-lda/eastmoney_topic.csv
+lda/*.csv
 lda/lda_model.gensim
