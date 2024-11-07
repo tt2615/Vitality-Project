@@ -2,12 +2,14 @@
 
 from dataset.bertdata import BertData
 from dataset.bprdata import BprData
+from dataset.inc_bprdata import IncBprData
 from dataset.transform import ToTensor#, Log, random_split
 from model_temps.lr import LR
 from model_temps.llr import LLR
 from model_temps.bert import Bert
 from model_temps.bertatt import BertAtt
 from model_temps.bertbpr import BertAttBpr
+from model_temps.incbertbpr import IncBertAttBpr
 
 import torch
 import atexit
@@ -20,6 +22,7 @@ import time
 import numpy as np
 import re
 import os
+import pickle
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -31,7 +34,7 @@ torch.mps.manual_seed(seed)
 
 #Parsing the arguments that are passed in the command line.
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', choices=['LR', 'LLR', 'Bert', 'BertAtt', 'BertBpr','BertBpr_v2','BertBpr_datagen'], help="MTL model", required=True)
+parser.add_argument('--model', choices=['LR', 'LLR', 'Bert', 'BertAtt', 'BertBpr','BertBpr_v2','BertBpr_v3','BertBpr_datagen'], help="MTL model", required=True)
 # parser.add_argument('--onehot', action='store_true', help="if data use onehot encoding", required=False)
 parser.add_argument('--device', type=str, default='cpu', help="hardware to perform training", required=False)
 parser.add_argument('--mode', choices=['train', 'test'], default='train', help="train model or test model", required=False)
@@ -47,6 +50,7 @@ parser.add_argument('--pad_len', type=int, default=32, help="maximum padding len
 parser.add_argument('--bert', type=str, default='Langboat/mengzi-bert-base-fin', choices=['bert-base-chinese','Langboat/mengzi-bert-base-fin'], help="version of bert", required=False)
 parser.add_argument('--oversample', type=bool, default=False, help="whether oversample viral post", required=False)
 parser.add_argument('--report', type=bool, default=True, help="whether generate report", required=False)
+parser.add_argument('--round', type=int, default=True, help="which round of v3 (continous training) is on", required=False)
 args = parser.parse_args()
 
 #Configure logging
@@ -206,7 +210,50 @@ elif args.model=='BertBpr_datagen': ##For data generation only
     print(f"Data Generation complete. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)} \n Exit Program...")
     exit()
 
-print(f"Data loaded. Training data: {len(train_data)}; Valid data: {len(valid_data)}; Testing data: {len(test_data)}")
+elif args.model=='BertBpr_v3': #continuous training #python main.py --model=BertBpr_v3 --round=1 --device=mps
+    x_trans_list = [ToTensor()]
+    post_cols = ['month', 
+                'industry_code1_index',
+                'industry_code1_index',
+                'sentiment',
+                'topic',]
+    author_cols = ['eastmoney_robo_journalism',
+                'media_robo_journalism',
+                'SMA_robo_journalism',
+                'item_author_index',
+                'article_author_index',
+                'article_source_index',
+                'item_author_index_rank',
+                'article_author_index_rank',
+                'article_source_index_rank',]
+    tar_col = 'viral',
+    max_padding_len=args.pad_len,
+    x_transforms=x_trans_list,
+    bert = args.bert
+                                                                   
+    if args.round==1:
+        train_data = IncBprData(dir='./data/train_bpr1.csv', mode='train')
+        valid_data = IncBprData(dir='./data/valid_bpr.csv', mode='train')
+        test_data = IncBprData(dir='./data/test1.csv', mode='test')
+    elif args.round==2:
+        train_data = IncBprData(dir='./data/train_bpr2.csv', mode='train')
+        valid_data = None
+        test_data = IncBprData(dir='./data/test2.csv', mode='test')
+    elif args.round==3:
+        train_data = IncBprData(dir='./data/train_bpr3.csv', mode='train')
+        valid_data = None
+        test_data = IncBprData(dir='./data/test3.csv', mode='test')
+    elif args.round==4:
+        train_data = IncBprData(dir='./data/train_bpr4.csv', mode='train')
+        valid_data = None
+        test_data = IncBprData(dir='./data/test4.csv', mode='test')
+
+    train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
+    valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True) if valid_data else None
+    test_dataloader = DataLoader(test_data, batch_size=args.batch, shuffle=True)
+    valid_dataset = test_dataset = (valid_dataloader, test_dataloader)
+
+print(f"Data loaded. Training data: {len(train_data)}; Testing data: {len(test_data)}")
 
 
 #3. Select model
@@ -252,6 +299,21 @@ elif args.model == 'BertBpr' or 'BertBpr_v2':
                     topic_num=topic_num,
                     device=device,
                     bert=args.bert).to(device)
+elif args.model == 'BertBpr_v3':
+    with open('my_list.pkl', 'rb') as f:
+        post_ft_unique_count, author_ft_unique_count = pickle.load(f)
+    post_ft_count = data.get_post_feature_count()
+    author_ft_count = data.get_author_feature_count()
+
+    model = IncBertAttBpr(
+        dim=args.dim,
+        post_ft_unique_count=post_ft_unique_count,
+        author_ft_unique_count=author_ft_unique_count,
+        post_ft_count = post_ft_count,
+        author_ft_count = author_ft_count,
+        device=device,
+        bert=args.bert
+    ).to(device)
 else:
     print('Invalid model choice!')
     exit()
@@ -266,10 +328,10 @@ atexit.register(exit_handler)
 #4. Select optimizer
 if args.optim=='SGD':
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-elif args.optim=='AdamW': # good for transformer based
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-else: # default adam
+elif args.optim=='Adam': 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+else: # default adamW good for transformer based
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
 ### Test Mode
 if args.mode=="test":
