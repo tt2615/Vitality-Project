@@ -2,7 +2,7 @@
 
 from dataset.bertdata import BertData
 from dataset.bprdata import BprData
-from dataset.inc_bprdata import IncBprData
+from dataset.inc_bprdata import IncBprData, IncTestData
 from dataset.transform import ToTensor#, Log, random_split
 from model_temps.lr import LR
 from model_temps.llr import LLR
@@ -213,40 +213,91 @@ elif args.model=='BertBpr_datagen': ##For data generation only
 elif args.model=='BertBpr_v3': #continuous training #python main.py --model=BertBpr_v3 --round=1 --device=mps
     x_trans_list = [ToTensor()]
     post_cols = ['month', 
-                'industry_code1_index',
-                'industry_code1_index',
+                'ind_code1_index',
+                'ind_code2_index',
                 'sentiment',
                 'topic',]
     author_cols = ['eastmoney_robo_journalism',
                 'media_robo_journalism',
                 'SMA_robo_journalism',
-                'item_author_index',
-                'article_author_index',
-                'article_source_index',
                 'item_author_index_rank',
                 'article_author_index_rank',
                 'article_source_index_rank',]
-    tar_col = 'viral',
-    max_padding_len=args.pad_len,
-    x_transforms=x_trans_list,
-    bert = args.bert
+    
+    
+    
+    
                                                                    
     if args.round==1:
-        train_data = IncBprData(dir='./data/train_bpr1.csv', mode='train')
-        valid_data = IncBprData(dir='./data/valid_bpr.csv', mode='train')
-        test_data = IncBprData(dir='./data/test1.csv', mode='test')
+        train_data = IncBprData(data_dir='./data/train_bpr1.csv', 
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
+        valid_data = IncBprData(data_dir='./data/valid_bpr.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
+        test_data = IncTestData(data_dir='./data/test1.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
     elif args.round==2:
-        train_data = IncBprData(dir='./data/train_bpr2.csv', mode='train')
+        train_data = IncBprData(data_dir='./data/train_bpr2.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
         valid_data = None
-        test_data = IncBprData(dir='./data/test2.csv', mode='test')
+        test_data = IncTestData(data_dir='./data/test2.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
     elif args.round==3:
-        train_data = IncBprData(dir='./data/train_bpr3.csv', mode='train')
+        train_data = IncBprData(data_dir='./data/train_bpr3.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
         valid_data = None
-        test_data = IncBprData(dir='./data/test3.csv', mode='test')
+        test_data = IncTestData(data_dir='./data/test3.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
     elif args.round==4:
-        train_data = IncBprData(dir='./data/train_bpr4.csv', mode='train')
+        train_data = IncBprData(data_dir='./data/train_bpr4.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
         valid_data = None
-        test_data = IncBprData(dir='./data/test4.csv', mode='test')
+        test_data = IncTestData(data_dir='./data/test4.csv',
+                                post_cols=post_cols,
+                                author_cols=author_cols,
+                                tar_col = 'viral',
+                                max_padding_len=args.pad_len,
+                                x_transforms=x_trans_list,
+                                bert = args.bert)
 
     train_dataloader = DataLoader(train_data, batch_size=args.batch, shuffle=True)
     valid_dataloader = DataLoader(valid_data, batch_size=args.batch, shuffle=True) if valid_data else None
@@ -255,12 +306,7 @@ elif args.model=='BertBpr_v3': #continuous training #python main.py --model=Bert
 
 print(f"Data loaded. Training data: {len(train_data)}; Testing data: {len(test_data)}")
 
-
 #3. Select model
-if args.model_path:
-    model = LR(data.get_feature_num(), data.get_task_num())
-    model.load_state_dict(torch.load(f"./models/{args.model_path}.pt"))
-    model.to(device)
 if args.model == 'LR':
     model = LR(data.get_feature_num(), data.get_task_num()).to(device)
 elif args.model == 'LLR':
@@ -283,7 +329,7 @@ elif args.model == 'BertAtt':
                     topic_num=topic_num,
                     device=device,
                     bert=args.bert).to(device)
-elif args.model == 'BertBpr' or 'BertBpr_v2':
+elif args.model == 'BertBpr' or args.model == 'BertBpr_v2':
     cat_unique_count = data.get_cat_feature_unique_count()
     user_unique_count = data.get_user_feature_unique_count()
     cat_feature_count = data.get_cat_feature_count()
@@ -300,10 +346,10 @@ elif args.model == 'BertBpr' or 'BertBpr_v2':
                     device=device,
                     bert=args.bert).to(device)
 elif args.model == 'BertBpr_v3':
-    with open('my_list.pkl', 'rb') as f:
+    with open('./data/bpr_v3_meta.pkl', 'rb') as f:
         post_ft_unique_count, author_ft_unique_count = pickle.load(f)
-    post_ft_count = data.get_post_feature_count()
-    author_ft_count = data.get_author_feature_count()
+    post_ft_count = train_data.get_post_feature_count()
+    author_ft_count = train_data.get_author_feature_count()
 
     model = IncBertAttBpr(
         dim=args.dim,
@@ -314,6 +360,8 @@ elif args.model == 'BertBpr_v3':
         device=device,
         bert=args.bert
     ).to(device)
+    if args.round>1:
+        model.load_state_dict(MODEL_PATH)
 else:
     print('Invalid model choice!')
     exit()
@@ -364,9 +412,8 @@ elif args.mode=="train":
 
     # paramters for early stop
     best_loss = np.inf
-    min_delta=0.001
     counter = 0
-    patience = 10
+    patience = 5
     stop_training = False
 
     t_epoch = trange(args.epoch, leave=False)
@@ -399,6 +446,7 @@ elif args.mode=="train":
             # time.sleep(0.01)
 
         # eavluate on test data
+        # if valid_dataset:
         batch_tqdm.set_description(f"Epoch {epoch} evaluation:")
         valid_loss, metrics, report = model.eval(valid_dataset, device, explain=True)
         for e, val in metrics.items():
@@ -414,7 +462,7 @@ elif args.mode=="train":
 
         # early stop
         # Check for early stopping
-        if valid_loss < best_loss - min_delta:
+        if valid_loss < best_loss:
             best_loss = valid_loss
             counter = 0
         else:

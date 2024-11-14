@@ -59,7 +59,7 @@ class IncBertAttBpr(nn.Module):
             nn.Dropout(0.1) 
         )
 
-        ## cat input embedding module #'item_author', 'article_author', 'article_source'
+        ## 
         self.post_embedding_layer = nn.ModuleList()
         for i in range(post_ft_count):
             self.post_embedding_layer.append(nn.Embedding(post_ft_unique_count[i], dim))
@@ -69,7 +69,7 @@ class IncBertAttBpr(nn.Module):
             self.author_embedding_layer.append(nn.Embedding(author_ft_unique_count[i], dim))
 
 
-        self.user_attention_module = Attention(dim)
+        self.author_attention_module = Attention(dim)
         self.post_attention_module = Attention(dim)
         # self.user_post_attention_module = Attention(dim)
         self.task_embedding = nn.Parameter(torch.rand(1,1,dim), requires_grad=True)
@@ -87,11 +87,21 @@ class IncBertAttBpr(nn.Module):
         text_rep = self.bert_linear(text_rep).unsqueeze(1) #batch*1*dim
         # print(text_rep.shape)
 
-        #extract attention: title_output.attentions has 12 (layers) of (batch*head(12)*len*len)
-        title_att_score = title_output.attentions[-1].mean(1).sum(dim=-1)#batch*len
-        print(title_att_score)
-        # title_att_score = torch.sum(title_att_score,dim=1) 
-        # print(title_att_score.shape)
+        #extract attention
+        attentions = title_output.attentions  # This is a tuple of attention matrices from each layer
+ 
+        # Concatenate attentions from all layers (stack them)
+        all_layer_attentions = torch.stack(attentions, dim=0)  # Shape: [num_layers, batch_size, num_heads, seq_len, seq_len]
+        # print(all_layer_attentions.shape)
+
+        # Average across attention heads (shape: [num_layers, batch_size, seq_len, seq_len])
+        avg_attention_heads = all_layer_attentions.mean(dim=2)  # Shape: [num_layers, batch_size, seq_len, seq_len]
+
+        # Average across all layers (shape: [batch_size, seq_len, seq_len])
+        avg_attention_layers = avg_attention_heads.mean(dim=0)  # Shape: [batch_size, seq_len, seq_len]
+
+        # Concentrated attention score for each token is the sum of attention values across all positions
+        title_att_score = avg_attention_layers.sum(dim=1)  # Shape: [seq_len]
 
         """
         non_text post feature:
@@ -103,15 +113,17 @@ class IncBertAttBpr(nn.Module):
         """
 
         #post feature representation
-        non_text_reps = torch.zeros((post_input.shape[0],1,self.dim)).to(self.device)
+        # Initialize an empty list to store embeddings
+        non_text_reps = []
+        post_input = post_input.long()
+        # Iterate over the inputs and corresponding embedding layers
         for i in range(self.post_ft_count):
-            embed_rep = self.post_embedding_layer[i](post_input[:,self.post_ft_count+i].to(torch.int)) #batch*dim
-            non_text_reps = torch.cat((non_text_reps, embed_rep.unsqueeze(1)),dim=1)
-        non_text_reps = non_text_reps[:,1:,:] #batch*5*dim
-        # print(non_text_reps.shape)
+            # Apply the embedding layer to the input
+            embed_rep = self.post_embedding_layer[i](post_input[:, i])  # shape: (batch_size, dim)
+            non_text_reps.append(embed_rep)
+        non_text_reps = torch.stack(non_text_reps, dim=1) #batch*5*dim
 
-        post_reps = torch.cat([text_rep, post_reps], dim=1) #batch*12*dim
-        # print(post_reps.shape)
+        post_reps = torch.cat([text_rep, non_text_reps], dim=1) #batch*6*dim
 
         # attentioned_rep, feature_att_score = self.attention_module(final_rep, text_rep) #batch*1*dim
         post_attentioned_rep, post_feature_att_score = self.post_attention_module(post_reps, self.task_embedding.expand(post_reps.shape[0], -1, -1))
@@ -123,19 +135,19 @@ class IncBertAttBpr(nn.Module):
             'eastmoney_robo_journalism',
             'media_robo_journalism',
             'SMA_robo_journalism',
-            'item_author_index',
-            'article_author_index',
-            'article_source_index',
             'item_author_index_rank',
             'article_author_index_rank',
             'article_source_index_rank'
         """
-        #author feature representation
-        author_reps = torch.zeros((author_input.shape[0],1,self.dim)).to(self.device)
-        for i in range(self.user_cols_count):
-            embed_rep = self.author_embedding_layer[i](author_input[:,i].to(torch.int)) #batch*dim
-            author_reps = torch.cat((author_reps, embed_rep.unsqueeze(1)),dim=1)
-        author_reps = author_reps[:,1:,:] #batch*9*dim
+
+        author_reps = []
+        author_input = author_input.long()
+        # Iterate over the inputs and corresponding embedding layers
+        for i in range(self.author_ft_count):
+            # Apply the embedding layer to the input
+            embed_rep = self.author_embedding_layer[i](author_input[:, i])  # shape: (batch_size, dim)
+            author_reps.append(embed_rep)
+        author_reps = torch.stack(author_reps, dim=1) #batch*6*dim
         # print(author_reps.shape)
 
         author_attentioned_rep, author_feature_att_score = self.author_attention_module(author_reps, self.task_embedding.expand(author_reps.shape[0], -1, -1))
@@ -188,7 +200,7 @@ class IncBertAttBpr(nn.Module):
         loss = -torch.log(torch.sigmoid(score_diff)).sum()
 
         # Add L2 regularization
-        lambda_reg = 0
+        lambda_reg = 0.1
         reg_loss = lambda_reg * (torch.norm(pos_scores) + torch.norm(neg_scores))
 
         return loss + reg_loss
@@ -283,9 +295,6 @@ class IncBertAttBpr(nn.Module):
                 'eastmoney_robo_journalism',
                 'media_robo_journalism',
                 'SMA_robo_journalism',
-                'item_author_index',
-                'article_author_index',
-                'article_source_index',
                 'item_author_index_rank',
                 'article_author_index_rank',
                 'article_source_index_rank'

@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
-from os.path import exists
 from tqdm import tqdm
-from torch.utils.data import random_split
 
 import torch
 torch.manual_seed(666)
@@ -13,8 +11,6 @@ from transformers import BertTokenizer
 class IncBprData(Dataset):
     def __init__(self, 
                  data_dir,
-                 meta_dir,
-                 mode,
                  post_cols=[], 
                  author_cols=[], 
                  tar_col='viral', 
@@ -26,16 +22,18 @@ class IncBprData(Dataset):
         self.post_cols = post_cols
         self.author_cols = author_cols
         self.tar_col = tar_col
-        self.mode = mode
         self.x_trans_list = x_transforms
 
-        self.data = pd.read_csv(data_dir, delimiter='<')
+        self.data = pd.read_csv(data_dir,
+                                usecols=['item_title','neg_item_title']
+                                +post_cols+['neg_'+x for x in post_cols]
+                                +author_cols+['neg_'+x for x in author_cols])
 
         # process text data: for bert input 
         tokenizer = BertTokenizer.from_pretrained(bert)
         input_ids = []
         attention_masks = []
-        print("encode test data titles")
+        print("encode positive sample titles")
         for text in tqdm(self.data['item_title'], total=self.data.shape[0]):
             encoded_dict = tokenizer.encode_plus(text,
                                                 add_special_tokens=True,
@@ -55,7 +53,7 @@ class IncBprData(Dataset):
 
         neg_input_ids = []
         neg_attention_masks = []
-        print("encode neg data titles")
+        print("encode negative sample titles")
         for text in tqdm(self.data['neg_item_title'], total=self.data.shape[0]):
             encoded_dict = tokenizer.encode_plus(text,
                                                 add_special_tokens=True,
@@ -98,9 +96,8 @@ class IncBprData(Dataset):
         record = self.data.iloc[idx]
         #----for pos columns:
         pos_text_input = record[self.text_cols]
-        pos_post_input = record[self.post_cols].astype(np.float32)
-        pos_author_input = record[self.author_cols].astype(np.float32)
-
+        pos_post_input = record[self.post_cols].astype(np.int8)
+        pos_author_input = record[self.author_cols].astype(np.int8)
         if self.x_trans_list:
             for trsfm in self.x_trans_list:
                 pos_text_input = np.stack(pos_text_input.values)
@@ -110,10 +107,8 @@ class IncBprData(Dataset):
 
         #----for neg columns:
         neg_text_input = record[['neg_' + x for x in self.text_cols]]
-        neg_post_input = record[['neg_' + x for x in self.post_cols]].astype(np.float32)
-        neg_author_input = record[['neg_' + x for x in self.author_cols]].astype(np.float32)
-        # print(pos_non_text_input)
-        # print(neg_author_input)
+        neg_post_input = record[['neg_' + x for x in self.post_cols]].astype(np.int8)
+        neg_author_input = record[['neg_' + x for x in self.author_cols]].astype(np.int8)
 
         if self.x_trans_list:
             for trsfm in self.x_trans_list:
@@ -121,7 +116,6 @@ class IncBprData(Dataset):
                 neg_text_input = trsfm(neg_text_input)
                 neg_post_input = trsfm(neg_post_input)
                 neg_author_input = trsfm(neg_author_input)
-        
         return (pos_text_input, pos_post_input, pos_author_input), (neg_text_input, neg_post_input, neg_author_input)
 
 
@@ -129,8 +123,6 @@ class IncBprData(Dataset):
 class IncTestData(Dataset):
     def __init__(self, 
                  data_dir,
-                 meta_dir,
-                 mode,
                  post_cols=[], 
                  author_cols=[], 
                  tar_col='viral', 
@@ -141,11 +133,9 @@ class IncTestData(Dataset):
         self.post_cols = post_cols
         self.author_cols = author_cols
         self.tar_col = tar_col
-        self.mode = mode
         self.x_trans_list = x_transforms
 
         self.data = pd.read_csv(data_dir)
-        self.metadata = (meta_dir)
 
         # process text data: for bert input 
         tokenizer = BertTokenizer.from_pretrained(bert)
@@ -176,8 +166,8 @@ class IncTestData(Dataset):
         record = self.data.iloc[idx]
 
         text_input = record[self.text_cols]
-        post_input = record[self.post_cols].astype(np.float32)
-        author_input = record[self.author_cols].astype(np.float32)
+        post_input = record[self.post_cols].astype(np.int8)
+        author_input = record[self.author_cols].astype(np.int8)
         y = record[self.tar_col]
 
         if self.x_trans_list:
