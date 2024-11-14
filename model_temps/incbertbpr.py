@@ -75,7 +75,7 @@ class IncBertAttBpr(nn.Module):
         self.task_embedding = nn.Parameter(torch.rand(1,1,dim), requires_grad=True)
 
         # define evaluator
-        self.evaluators = [ACCURACY(), CLASSIFICATION(), NDCG(1), NDCG(5), NDCG(10), NDCG(-1)]
+        self.evaluators = [ACCURACY(), CLASSIFICATION(), NDCG(10), NDCG(0.01), NDCG(0.05), NDCG()]
 
     def forward(self, text_input, post_input, author_input):
         ## post representation
@@ -275,7 +275,7 @@ class IncBertAttBpr(nn.Module):
             print(f'total pred 1s: {preds.sum()}')
 
             for e in self.evaluators:
-                metrics_vals[repr(e)] = e(ys, preds) #[1, task]
+                metrics_vals[repr(e)] = e(ys, preds, len(test_data)) #[1, task]
                 
 
         if explain: #record attention scores for analysis

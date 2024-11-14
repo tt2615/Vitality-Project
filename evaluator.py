@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, f1_score, classification_report, ndcg_score
 
@@ -81,16 +82,36 @@ class F1:
 
 
 class NDCG:
-    def __init__(self, k):
+    def __init__(self, k=None):
         self.k = k
 
     def __call__(self, y, y_pred, *args):
-        y, y_pred = y.cpu().unsqueeze(0), y_pred.cpu().unsqueeze(0)
-        if self.k!=-1:
-            ndcg = ndcg_score(y, y_pred, k=self.k)
-        else:
-            ndcg = ndcg_score(y, y_pred)
-        return ndcg
+        datalen = args[0]
+        y, y_pred = y.cpu(), y_pred.cpu()
+        y = np.ravel(y)
+        y_pred = np.ravel(y_pred)
+        print(y.shape, y_pred.shape)
+         # Sort indices of y_pred in descending order of predicted scores
+        idx_sorted_pred = np.argsort(y_pred)[::-1]
+        # Sort indices of y in descending order of true scores
+        idx_sorted_true = np.argsort(y)[::-1]
+        
+        # Calculate DCG for the predicted ordering
+        def dcg(scores, idx_sorted, k):
+            if not k:
+                idx_sorted = idx_sorted
+            elif k<1:
+                idx_sorted = idx_sorted[:int(k*datalen)]
+            else:
+                idx_sorted = idx_sorted[:k]
+            return np.sum((2**scores[idx_sorted] - 1) / np.log2(np.arange(1, len(idx_sorted) + 1) + 1))
+        
+        # Compute DCG for predicted and ideal (sorted by true relevance) orderings
+        dcg_max = dcg(y, idx_sorted_true, self.k)
+        dcg_pred = dcg(y, idx_sorted_pred, self.k)
+        
+        # Avoid division by zero if dcg_max is zero
+        return dcg_pred / dcg_max if dcg_max > 0 else 0.0
     
     def __repr__(self) -> str:
         if self.k != -1:

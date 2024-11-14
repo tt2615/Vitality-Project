@@ -357,8 +357,8 @@ elif args.model == 'BertBpr_v3':
         author_ft_unique_count=author_ft_unique_count,
         post_ft_count = post_ft_count,
         author_ft_count = author_ft_count,
-        device=device,
-        bert=args.bert
+        device = device,
+        bert = args.bert
     ).to(device)
     if args.round>1:
         model.load_state_dict(MODEL_PATH)
@@ -392,7 +392,6 @@ if args.mode=="test":
 
     print("-"*10 + "Start testing" + "-"*10)
     time_s = time.time()
-    
     test_loss, metrics, report = model.eval(test_dataset, device, explain=True)
 
     # print result
