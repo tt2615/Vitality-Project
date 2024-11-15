@@ -90,7 +90,6 @@ class NDCG:
         y, y_pred = y.cpu(), y_pred.cpu()
         y = np.ravel(y)
         y_pred = np.ravel(y_pred)
-        print(y.shape, y_pred.shape)
          # Sort indices of y_pred in descending order of predicted scores
         idx_sorted_pred = np.argsort(y_pred)[::-1]
         # Sort indices of y in descending order of true scores
@@ -114,7 +113,7 @@ class NDCG:
         return dcg_pred / dcg_max if dcg_max > 0 else 0.0
     
     def __repr__(self) -> str:
-        if self.k != -1:
+        if self.k:
             return f"NDCG@{self.k}"
         else:
             return f"NDCG"

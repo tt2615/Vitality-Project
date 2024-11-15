@@ -208,6 +208,7 @@ class IncBertAttBpr(nn.Module):
 
     def eval(self, eval_dataset, device, explain=False):
         valid_data, test_data = eval_dataset
+        test_len = len(test_data.dataset)
 
         with torch.no_grad():
             if valid_data:
@@ -275,7 +276,7 @@ class IncBertAttBpr(nn.Module):
             print(f'total pred 1s: {preds.sum()}')
 
             for e in self.evaluators:
-                metrics_vals[repr(e)] = e(ys, preds, len(test_data)) #[1, task]
+                metrics_vals[repr(e)] = e(ys, preds, test_len) #[1, task]
                 
 
         if explain: #record attention scores for analysis

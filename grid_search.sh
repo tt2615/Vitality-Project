@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Define parameter ranges
-dims=(50 100 150 200)
-lrs=(1e-3 5e-4 1e-4 5e-5)
-batches=(64 32 16 4)
+dims=(50 80 100 120)
+lrs=(5e-4 1e-4 5e-5)
+batches=(64 32 16)
 
 # Iterate through parameter combinations
 for dim in "${dims[@]}"; do
