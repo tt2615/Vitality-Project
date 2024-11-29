@@ -27,7 +27,7 @@ class IncBprData(Dataset):
         self.data = pd.read_csv(data_dir,
                                 usecols=['item_title','neg_item_title']
                                 +post_cols+['neg_'+x for x in post_cols]
-                                +author_cols+['neg_'+x for x in author_cols])
+                                +author_cols+['neg_'+x for x in author_cols], nrows=50000)
 
         # process text data: for bert input 
         tokenizer = BertTokenizer.from_pretrained(bert)
@@ -135,7 +135,7 @@ class IncTestData(Dataset):
         self.tar_col = tar_col
         self.x_trans_list = x_transforms
 
-        self.data = pd.read_csv(data_dir)
+        self.data = pd.read_csv(data_dir, nrows=50000)
 
         # process text data: for bert input 
         tokenizer = BertTokenizer.from_pretrained(bert)

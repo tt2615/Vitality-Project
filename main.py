@@ -41,7 +41,7 @@ parser.add_argument('--mode', choices=['train', 'test'], default='train', help="
 parser.add_argument('--model_path', type=str, default=None, help="trained model path", required=False)
 parser.add_argument('--batch', type=int, default=64, help="batch size for feeding data", required=False)
 parser.add_argument('--lr', type=float, default=1e-3, help="learning rate for training model", required=False)
-parser.add_argument('--optim', choices=['SGD', 'Adam', 'AdamW'], default="Adam", help="optimizer for training model", required=False)
+parser.add_argument('--optim', choices=['SGD', 'Adam', 'AdamW'], default="AdamW", help="optimizer for training model", required=False)
 parser.add_argument('--epoch', type=int, default=100, help="epoch number for training model", required=False)
 parser.add_argument('--dim', type=int, default=20, help="dimension for latent factors", required=False)
 parser.add_argument('--comment', type=str, help="additional comment for model", required=False)
@@ -50,14 +50,15 @@ parser.add_argument('--pad_len', type=int, default=32, help="maximum padding len
 parser.add_argument('--bert', type=str, default='Langboat/mengzi-bert-base-fin', choices=['bert-base-chinese','Langboat/mengzi-bert-base-fin'], help="version of bert", required=False)
 parser.add_argument('--oversample', type=bool, default=False, help="whether oversample viral post", required=False)
 parser.add_argument('--report', type=bool, default=True, help="whether generate report", required=False)
-parser.add_argument('--round', type=int, default=True, help="which round of v3 (continous training) is on", required=False)
+parser.add_argument('--round', type=int, default=1, help="which round of v3 (continous training) is on", required=False)
+parser.add_argument('--drop', type=float, default=0.0, help="dropout rate for training model", required=False)
 args = parser.parse_args()
 
 #Configure logging
-LOG_PATH = (f"./logs/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.log")
+LOG_PATH = (f"./logs/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.drop}_{args.comment}.log")
 logging.basicConfig(filename=LOG_PATH, filemode='w', level=logging.DEBUG, format='%(levelname)s - %(message)s')
 
-MODEL_PATH = (f"./models/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.comment}.pt")
+MODEL_PATH = (f"./models/{args.model}_{args.batch}_{args.lr}_{args.dim}_{args.optim}_{args.drop}_{args.comment}.pt")
 
 print("="*20 + "START PROGRAM" + "="*20)
 
@@ -358,7 +359,9 @@ elif args.model == 'BertBpr_v3':
         post_ft_count = post_ft_count,
         author_ft_count = author_ft_count,
         device = device,
-        bert = args.bert
+        bert = args.bert,
+        bert_freeze=False, 
+        drop_rate = args.drop
     ).to(device)
     if args.round>1:
         model.load_state_dict(MODEL_PATH)
@@ -412,7 +415,7 @@ elif args.mode=="train":
     # paramters for early stop
     best_loss = np.inf
     counter = 0
-    patience = 5
+    patience = 2
     stop_training = False
 
     t_epoch = trange(args.epoch, leave=False)

@@ -34,7 +34,9 @@ class IncBertAttBpr(nn.Module):
         post_ft_count,
         author_ft_count,
         device,
-        bert='bert-base-chinese'):
+        drop_rate,
+        bert='bert-base-chinese',
+        bert_freeze = False):
         super(IncBertAttBpr, self).__init__()
         # define parameters
         self.dim = dim
@@ -44,6 +46,9 @@ class IncBertAttBpr(nn.Module):
         self.author_ft_unique_count = author_ft_unique_count
         self.device = device
         self.bert = bert
+        self.bert_freeze = bert_freeze
+        self.drop_rate = drop_rate
+        self.num_heads = 2
 
         ## text input module
         # configuration = BertConfig.from_pretrained('bert-base-chinese', output_hidden_states=True, output_attentions=True)
@@ -54,10 +59,15 @@ class IncBertAttBpr(nn.Module):
         self.title_bert = BertModel.from_pretrained(bert, output_attentions=True)
         self.bert_linear = nn.Sequential(
             nn.Linear(768, dim*2, bias=True),
-            nn.ReLU(),
+            nn.LeakyReLU(),
+            nn.Dropout(self.drop_rate),
             nn.Linear(dim*2, dim, bias=True),
-            nn.Dropout(0.1) 
+            nn.LeakyReLU(),
+            nn.Dropout(self.drop_rate) 
         )
+        if self.bert_freeze:
+            for param in self.title_bert.parameters():
+                param.requires_grad = False
 
         ## 
         self.post_embedding_layer = nn.ModuleList()
@@ -69,10 +79,21 @@ class IncBertAttBpr(nn.Module):
             self.author_embedding_layer.append(nn.Embedding(author_ft_unique_count[i], dim))
 
 
-        self.author_attention_module = Attention(dim)
-        self.post_attention_module = Attention(dim)
-        # self.user_post_attention_module = Attention(dim)
+        # self.author_attention_module = Attention(dim)
+        # self.post_attention_module = Attention(dim)
+        self.author_attention_module = nn.MultiheadAttention(dim, self.num_heads, dropout=self.drop_rate, batch_first=True)
+        self.post_attention_module = nn.MultiheadAttention(dim, self.num_heads, dropout=self.drop_rate, batch_first=True)
+
         self.task_embedding = nn.Parameter(torch.rand(1,1,dim), requires_grad=True)
+
+        self.post_dropout = nn.Sequential(
+            nn.LeakyReLU(),
+            nn.Dropout(self.drop_rate),
+        )
+        self.author_dropout = nn.Sequential(
+            nn.LeakyReLU(),
+            nn.Dropout(self.drop_rate),
+        )
 
         # define evaluator
         self.evaluators = [ACCURACY(), CLASSIFICATION(), NDCG(10), NDCG(0.01), NDCG(0.05), NDCG()]
@@ -126,7 +147,10 @@ class IncBertAttBpr(nn.Module):
         post_reps = torch.cat([text_rep, non_text_reps], dim=1) #batch*6*dim
 
         # attentioned_rep, feature_att_score = self.attention_module(final_rep, text_rep) #batch*1*dim
-        post_attentioned_rep, post_feature_att_score = self.post_attention_module(post_reps, self.task_embedding.expand(post_reps.shape[0], -1, -1))
+        # post_attentioned_rep, post_feature_att_score = self.post_attention_module(post_reps, self.task_embedding.expand(post_reps.shape[0], -1, -1))
+        post_attentioned_rep, post_feature_att_score = self.post_attention_module(post_reps, post_reps, post_reps)
+        post_attentioned_rep, post_feature_att_score = post_attentioned_rep.mean(dim=1), post_feature_att_score.mean(dim=1)
+        post_attentioned_rep = self.post_dropout(post_attentioned_rep.squeeze())
         # print(self.task_embedding)
         # print(attentioned_rep.shape)
 
@@ -150,14 +174,18 @@ class IncBertAttBpr(nn.Module):
         author_reps = torch.stack(author_reps, dim=1) #batch*6*dim
         # print(author_reps.shape)
 
-        author_attentioned_rep, author_feature_att_score = self.author_attention_module(author_reps, self.task_embedding.expand(author_reps.shape[0], -1, -1))
+        # author_attentioned_rep, author_feature_att_score = self.author_attention_module(author_reps, self.task_embedding.expand(author_reps.shape[0], -1, -1))
+        author_attentioned_rep, author_feature_att_score = self.author_attention_module(author_reps, author_reps, author_reps)
+        author_attentioned_rep, author_feature_att_score = author_attentioned_rep.mean(dim=1), author_feature_att_score.mean(dim=1)
+        author_attentioned_rep = self.author_dropout(author_attentioned_rep.squeeze())
 
-        scores = torch.sigmoid(torch.bmm(post_attentioned_rep, author_attentioned_rep.transpose(1, 2)).squeeze())
+        # scores = torch.sigmoid(torch.bmm(post_attentioned_rep, author_attentioned_rep.transpose(1, 2)).squeeze())
+        scores = torch.sum(post_attentioned_rep * author_attentioned_rep, dim=1)
 
         feature_att_score = torch.cat((post_feature_att_score, author_feature_att_score), dim=1)
         # print(feature_att_score.shape)
 
-        return scores, feature_att_score, title_att_score
+        return scores, feature_att_score, title_att_score, post_attentioned_rep, author_attentioned_rep
         # pos_score, p_feature_att_score, p_title_att_score = self.compute_score(pos_input)
         # neg_score, n_feature_att_score, n_title_att_score = self.compute_score(neg_input)
 
@@ -174,7 +202,7 @@ class IncBertAttBpr(nn.Module):
         pos_non_text_input = pos_non_text_input.to(self.device)
         pos_author_input = pos_author_input.to(self.device)
 
-        pos_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_author_input)
+        pos_scores, _, _, pos_post_embed, pos_author_embed = self.forward(pos_text_input, pos_non_text_input, pos_author_input)
 
         #---for neg data
         neg_text_input, neg_non_text_input, neg_author_input = neg_data
@@ -184,26 +212,33 @@ class IncBertAttBpr(nn.Module):
         neg_non_text_input = neg_non_text_input.to(self.device)
         neg_author_input = neg_author_input.to(self.device)
 
-        neg_scores, _, _ = self.forward(neg_text_input, neg_non_text_input, neg_author_input)
+        neg_scores, _, _, neg_post_embed, neg_author_embed = self.forward(neg_text_input, neg_non_text_input, neg_author_input)
 
+        # batch_loss = self.compute_loss(pos_scores, neg_scores, (pos_post_embed, pos_author_embed, neg_post_embed, neg_author_embed))
         batch_loss = self.compute_loss(pos_scores, neg_scores)
             
         return batch_loss
     
-    def compute_loss(self, pos_scores, neg_scores): ##BPR loss
-
+    def compute_loss(self, pos_scores, neg_scores, embeddings=None): ##BPR loss
+        # print(pos_scores, neg_scores)
         score_diff = pos_scores - neg_scores
 
         # Compute the BPR loss
         # print(pos_scores, neg_scores)
         # print(score_diff)
-        loss = -torch.log(torch.sigmoid(score_diff)).sum()
+        loss = -torch.log(torch.sigmoid(score_diff) + 1e-10).mean()
 
-        # Add L2 regularization
-        lambda_reg = 0.1
-        reg_loss = lambda_reg * (torch.norm(pos_scores) + torch.norm(neg_scores))
+        if embeddings:
+            lambda_reg = 0.01
+            l2_loss = lambda_reg * (
+                torch.sum(embeddings[0] ** 2) +
+                torch.sum(embeddings[1] ** 2) +
+                torch.sum(embeddings[2] ** 2) +
+                torch.sum(embeddings[3] ** 2)
+            )
+            loss += l2_loss
 
-        return loss + reg_loss
+        return loss
 
 
     def eval(self, eval_dataset, device, explain=False):
@@ -226,7 +261,7 @@ class IncBertAttBpr(nn.Module):
                     pos_non_text_input = pos_non_text_input.to(self.device)
                     pos_author_input = pos_author_input.to(self.device)
 
-                    pos_scores, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_author_input)
+                    pos_scores, _, _, _, _ = self.forward(pos_text_input, pos_non_text_input, pos_author_input)
 
                     #---for neg data
                     neg_text_input, neg_non_text_input, neg_author_input = neg_data
@@ -236,7 +271,7 @@ class IncBertAttBpr(nn.Module):
                     neg_non_text_input = neg_non_text_input.to(self.device)
                     neg_author_input = neg_author_input.to(self.device)
 
-                    neg_scores, _, _ = self.forward(neg_text_input, neg_non_text_input, neg_author_input)
+                    neg_scores, _, _, _, _ = self.forward(neg_text_input, neg_non_text_input, neg_author_input)
 
                     eval_loss += self.compute_loss(pos_scores, neg_scores)
             
@@ -256,7 +291,7 @@ class IncBertAttBpr(nn.Module):
 
                 ys = torch.cat((ys, y.cpu().detach()))
 
-                scores, feature_att_score, title_att_score = self.forward(text_input, non_text_input, user_input)
+                scores, feature_att_score, title_att_score, _, _ = self.forward(text_input, non_text_input, user_input)
                 # Calculate the number of elements to set to 1
                 scores = scores.cpu().detach()
 
