@@ -137,7 +137,9 @@ Pipfile.lock
 .vscode/
 *.pt
 sentiment_analysis.ipynb
-data/
+data/*
+!data/train_sample.csv
+!data/test_sample.csv
 *.out
 att_results/
 analysis/
@@ -146,3 +148,10 @@ analysis/
 # lda
 lda/*.csv
 lda/lda_model.gensim
+# for publication
+dataset/bertdata.py
+dataset/bprdata.py
+data explore.ipynb
+data_preprocess.ipynb
+deep_main.py
+machine leraning code.ipynb
